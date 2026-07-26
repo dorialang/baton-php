@@ -1,0 +1,7 @@
+manifest-version = 1
+
+[package]
+name = "{{ name }}"
+version = "0.1.0"
+kind = "binary"
+entry = "src/main.doria"
