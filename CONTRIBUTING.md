@@ -57,6 +57,8 @@ With `--development`, Baton may use `BATON_DORIAC` and then `PATH`. Without that
 
 ## Design and implementation rules
 
+- Treat the PHP bootstrap as a lean developer-experience prototype. Prefer direct Symfony commands and concrete integration tests over abstractions intended for long-term reuse.
+- The durable Baton implementation will be written in Doria. Do not pre-build its internal architecture in PHP.
 - Keep Baton semantic-free. It coordinates projects and invokes `doriac`; it does not parse or reinterpret Doria source.
 - Route every compiler process through `CompilerAdapter`.
 - Pass process arguments as arrays. Never construct a shell command with interpolated paths or user input.

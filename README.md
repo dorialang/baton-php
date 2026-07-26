@@ -66,6 +66,8 @@ Package versions use SemVer. Doria toolchain releases use CalVer, such as `2026.
 
 Build artifacts are written beneath `build/<host-target>/<profile>/`. Baton never uses Cargo's `target/` convention for Doria project output.
 
+Each profile directory also contains `build.json`, recording the package, package version, toolchain, target, and profile that produced the artifact.
+
 See [Project manifest](docs/project-manifest.md) for the field contract and path rules.
 
 ## Toolchain integrity

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Doria\Baton;
 
+use Doria\Baton\Commands\BuildCommand;
 use Doria\Baton\Commands\CheckCommand;
 use Doria\Baton\Commands\DoctorCommand;
 use Doria\Baton\Commands\NewCommand;
@@ -32,6 +33,7 @@ final class Application
         $application->addCommands([
             new NewCommand(),
             new CheckCommand(),
+            new BuildCommand(),
             new DoctorCommand(),
             new VersionCommand(),
         ]);
@@ -64,7 +66,6 @@ final class Application
 
         return [
             // Planned for the bootstrap, implemented in a later increment.
-            new StageGatedCommand('build', 'Compile the current project', $bootstrapPending('build')),
             new StageGatedCommand('run', 'Compile and run the current project', $bootstrapPending('run')),
 
             // Deliberately deferred to the Stage 33 Baton MVP or later.

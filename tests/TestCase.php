@@ -46,6 +46,37 @@ abstract class TestCase extends PHPUnitTestCase
         return PHP_OS_FAMILY === 'Windows' ? 'doriac.exe' : 'doriac';
     }
 
+    /**
+     * @param list<string> $arguments
+     * @return array{exitCode: int, stdout: string, stderr: string}
+     */
+    protected function runBaton(array $arguments, string $workingDirectory): array
+    {
+        $command = [
+            PHP_BINARY,
+            dirname(__DIR__) . '/bin/baton',
+            ...$arguments,
+        ];
+        $descriptors = [
+            0 => ['pipe', 'r'],
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
+        ];
+        $process = proc_open($command, $descriptors, $pipes, $workingDirectory);
+        self::assertIsResource($process);
+        fclose($pipes[0]);
+        $stdout = stream_get_contents($pipes[1]);
+        $stderr = stream_get_contents($pipes[2]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+
+        return [
+            'exitCode' => proc_close($process),
+            'stdout' => $stdout === false ? '' : $stdout,
+            'stderr' => $stderr === false ? '' : $stderr,
+        ];
+    }
+
     protected function tearDown(): void
     {
         foreach (array_reverse($this->temporaryDirectories) as $directory) {

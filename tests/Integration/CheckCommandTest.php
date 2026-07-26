@@ -48,37 +48,6 @@ TOML));
         self::assertSame("compiler diagnostic unchanged\n", $failure['stderr']);
     }
 
-    /**
-     * @param list<string> $arguments
-     * @return array{exitCode: int, stdout: string, stderr: string}
-     */
-    private function runBaton(array $arguments, string $workingDirectory): array
-    {
-        $command = [
-            PHP_BINARY,
-            dirname(__DIR__, 2) . '/bin/baton',
-            ...$arguments,
-        ];
-        $descriptors = [
-            0 => ['pipe', 'r'],
-            1 => ['pipe', 'w'],
-            2 => ['pipe', 'w'],
-        ];
-        $process = proc_open($command, $descriptors, $pipes, $workingDirectory);
-        self::assertIsResource($process);
-        fclose($pipes[0]);
-        $stdout = stream_get_contents($pipes[1]);
-        $stderr = stream_get_contents($pipes[2]);
-        fclose($pipes[1]);
-        fclose($pipes[2]);
-
-        return [
-            'exitCode' => proc_close($process),
-            'stdout' => $stdout === false ? '' : $stdout,
-            'stderr' => $stderr === false ? '' : $stderr,
-        ];
-    }
-
     private function writeFakeCompiler(string $root): string
     {
         $directory = $root . '/fake compiler';

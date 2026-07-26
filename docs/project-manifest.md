@@ -68,4 +68,18 @@ build/<host-target>/development/
 build/<host-target>/release/
 ```
 
+Each profile directory contains the package executable and `build.json`:
+
+```json
+{
+    "package": "hello-doria",
+    "packageVersion": "0.1.0",
+    "toolchainVersion": "2026.03.1-canary",
+    "target": "linux-x86_64",
+    "profile": "development"
+}
+```
+
+Development and release builds use separate directories and never overwrite one another. Baton removes the previous artifact before compiling, so a failed build cannot leave an older executable looking current.
+
 `toolchain.json` never belongs in a Doria project. It is installed-toolchain metadata, not `Baton.toml` and not a package lockfile.

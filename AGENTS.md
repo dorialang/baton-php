@@ -28,6 +28,9 @@ This file contains repository-specific instructions for coding agents. Human con
 
 ## Implementation guardrails
 
+- Treat this PHP bootstrap as a disposable developer-experience prototype. Prefer the smallest direct Symfony implementation that lets the team exercise and refine the CLI.
+- Do not build reusable PHP architecture for the eventual Baton implementation. Durable internals belong to the later Doria-native repository.
+- Preserve useful user-facing feedback in commands, fixtures, and integration tests rather than adding abstraction layers.
 - Invoke `doriac` only through `CompilerAdapter`.
 - Use argument vectors, never interpolated shell command strings.
 - Preserve standard streams, signals where supported, and exact child exit codes.

@@ -15,6 +15,12 @@ Baton is Doria's project manager and toolchain driver. Its architecture keeps pr
 
 Baton never parses Doria source or attempts to reproduce a compiler diagnostic. It selects a compatible `doriac`, constructs an argument vector, and forwards the process result.
 
+## Bootstrap implementation strategy
+
+The PHP implementation is intentionally lean and disposable. Its purpose is to improve the Doria development workflow now and gather concrete feedback about Baton's commands, diagnostics, paths, and project conventions before the durable implementation is written in Doria.
+
+Symfony Console provides the command structure. Bootstrap features should normally be implemented directly in those commands, with integration tests preserving the useful experience. PHP abstraction layers are added only when they remove real duplication or enforce a security boundary; they are not a rehearsal for the Doria-native internal architecture.
+
 ## Command flow
 
 ```text
