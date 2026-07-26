@@ -23,7 +23,7 @@ use Symfony\Component\Console\Application as SymfonyApplication;
 final class Application
 {
     /** Toolchain CalVer (zero-padded month), distinct from a package SemVer. */
-    public const VERSION = '2026.07.1-canary';
+    public const VERSION = '2026.03.1-canary';
 
     public static function create(): SymfonyApplication
     {

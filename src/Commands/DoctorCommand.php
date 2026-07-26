@@ -5,13 +5,10 @@ declare(strict_types=1);
 namespace Doria\Baton\Commands;
 
 use Doria\Baton\Application;
-use Doria\Baton\Compiler\CompilerAdapter;
 use Doria\Baton\Diagnostics\BatonError;
-use Doria\Baton\Toolchain\ToolchainLocator;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
@@ -26,12 +23,7 @@ final class DoctorCommand extends BatonCommand
 {
     protected function configure(): void
     {
-        $this->addOption(
-            'compiler',
-            null,
-            InputOption::VALUE_REQUIRED,
-            'Path to a doriac executable (development override)'
-        );
+        CompilerOptions::configure($this);
     }
 
     protected function handle(InputInterface $input, OutputInterface $output): int
@@ -40,19 +32,29 @@ final class DoctorCommand extends BatonCommand
         $this->line($output, 'PASS', 'Host platform', PHP_OS_FAMILY . ' / ' . php_uname('m'));
         $this->line($output, 'PASS', 'PHP runtime', PHP_VERSION);
 
-        /** @var string|null $compilerOverride */
-        $compilerOverride = $input->getOption('compiler');
-
         try {
-            $doriac = (new ToolchainLocator($compilerOverride))->locate();
-            $this->line($output, 'PASS', 'doriac path', $doriac);
-
-            $result = (new CompilerAdapter($doriac))->capture(['--version']);
-            if ($result->succeeded() && trim($result->stdout) !== '') {
-                $this->line($output, 'PASS', 'doriac version', trim($result->stdout));
-            } else {
-                $this->line($output, 'WARNING', 'doriac version', 'could not query --version');
-            }
+            $toolchain = CompilerOptions::locate($input);
+            $this->line($output, 'PASS', 'doriac path', $toolchain->compilerPath);
+            $this->line($output, 'PASS', 'doriac source', $toolchain->source);
+            $this->line(
+                $output,
+                'PASS',
+                'doriac version',
+                $toolchain->identity->toolchainVersion
+            );
+            $this->line($output, 'PASS', 'doriac target', $toolchain->identity->target);
+            $this->line(
+                $output,
+                $toolchain->manifest === null ? 'WARNING' : 'PASS',
+                'toolchain manifest',
+                $toolchain->manifestStatus()
+            );
+            $this->line(
+                $output,
+                $toolchain->manifest === null ? 'WARNING' : 'PASS',
+                'component hash',
+                $toolchain->hashStatus()
+            );
         } catch (BatonError $error) {
             $this->line($output, 'FAIL', 'doriac', $error->heading);
 

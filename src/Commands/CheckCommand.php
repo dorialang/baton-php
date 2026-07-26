@@ -7,10 +7,8 @@ namespace Doria\Baton\Commands;
 use Doria\Baton\Compiler\CompilerAdapter;
 use Doria\Baton\Manifest\ManifestLoader;
 use Doria\Baton\Project\ProjectLocator;
-use Doria\Baton\Toolchain\ToolchainLocator;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
 #[AsCommand(
@@ -21,12 +19,7 @@ final class CheckCommand extends BatonCommand
 {
     protected function configure(): void
     {
-        $this->addOption(
-            'compiler',
-            null,
-            InputOption::VALUE_REQUIRED,
-            'Path to a doriac executable (development override)'
-        );
+        CompilerOptions::configure($this);
     }
 
     protected function handle(InputInterface $input, OutputInterface $output): int
@@ -34,13 +27,12 @@ final class CheckCommand extends BatonCommand
         $projectRoot = (new ProjectLocator())->locate(getcwd() ?: '.');
         $manifest = (new ManifestLoader())->load($projectRoot);
 
-        /** @var string|null $compilerOverride */
-        $compilerOverride = $input->getOption('compiler');
-        $doriac = (new ToolchainLocator($compilerOverride))->locate();
+        $toolchain = CompilerOptions::locate($input);
 
         // Run the compiler from the project root so its diagnostics carry the
         // project-relative entry path, and forward them (and the exit code)
         // unchanged.
-        return (new CompilerAdapter($doriac))->passthrough(['check', $manifest->entry], $projectRoot);
+        return (new CompilerAdapter($toolchain->compilerPath))
+            ->passthrough(['check', $manifest->entry], $projectRoot);
     }
 }
