@@ -8,6 +8,7 @@ use Doria\Baton\Commands\BuildCommand;
 use Doria\Baton\Commands\CheckCommand;
 use Doria\Baton\Commands\DoctorCommand;
 use Doria\Baton\Commands\NewCommand;
+use Doria\Baton\Commands\RunCommand;
 use Doria\Baton\Commands\StageGatedCommand;
 use Doria\Baton\Commands\VersionCommand;
 use Doria\Baton\Diagnostics\BatonError;
@@ -34,6 +35,7 @@ final class Application
             new NewCommand(),
             new CheckCommand(),
             new BuildCommand(),
+            new RunCommand(),
             new DoctorCommand(),
             new VersionCommand(),
         ]);
@@ -51,13 +53,6 @@ final class Application
      */
     private static function stageGatedCommands(): array
     {
-        $bootstrapPending = static fn (string $name): BatonError => new BatonError(
-            'B0101',
-            "`baton {$name}` Is Not Yet Implemented in This Build",
-            "This command is part of the Baton bootstrap and is planned, but this\n"
-                . "build does not implement it yet."
-        );
-
         $stage33 = static fn (string $name, string $reason): BatonError => new BatonError(
             'B0102',
             "`baton {$name}` Is Not Available in This Toolchain",
@@ -65,9 +60,6 @@ final class Application
         );
 
         return [
-            // Planned for the bootstrap, implemented in a later increment.
-            new StageGatedCommand('run', 'Compile and run the current project', $bootstrapPending('run')),
-
             // Deliberately deferred to the Stage 33 Baton MVP or later.
             new StageGatedCommand('test', 'Run project tests', $stage33(
                 'test',

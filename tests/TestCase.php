@@ -50,7 +50,11 @@ abstract class TestCase extends PHPUnitTestCase
      * @param list<string> $arguments
      * @return array{exitCode: int, stdout: string, stderr: string}
      */
-    protected function runBaton(array $arguments, string $workingDirectory): array
+    protected function runBaton(
+        array $arguments,
+        string $workingDirectory,
+        string $input = '',
+    ): array
     {
         $command = [
             PHP_BINARY,
@@ -64,6 +68,9 @@ abstract class TestCase extends PHPUnitTestCase
         ];
         $process = proc_open($command, $descriptors, $pipes, $workingDirectory);
         self::assertIsResource($process);
+        if ($input !== '') {
+            self::assertSame(strlen($input), fwrite($pipes[0], $input));
+        }
         fclose($pipes[0]);
         $stdout = stream_get_contents($pipes[1]);
         $stderr = stream_get_contents($pipes[2]);

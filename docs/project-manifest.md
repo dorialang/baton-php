@@ -82,4 +82,6 @@ Each profile directory contains the package executable and `build.json`:
 
 Development and release builds use separate directories and never overwrite one another. Baton removes the previous artifact before compiling, so a failed build cannot leave an older executable looking current.
 
+`baton run` builds the selected profile into this same layout and executes the newly produced artifact. It never falls back to a previous build after compiler failure.
+
 `toolchain.json` never belongs in a Doria project. It is installed-toolchain metadata, not `Baton.toml` and not a package lockfile.

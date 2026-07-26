@@ -5,7 +5,8 @@
     "require": {
         "php": "^8.4",
         "symfony/console": "^8.1",
-        "laravel/prompts": "^0.3.21"
+        "laravel/prompts": "^0.3.21",
+        "symfony/process": "^8.1"
     },
     "require-dev": {
         "phpstan/phpstan": "^2.2",

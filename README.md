@@ -39,6 +39,14 @@ Run `baton doctor` after installation to verify the toolchain components and the
 
 Baton searches the current directory and its parents for `Baton.toml`, so project commands also work from a subdirectory.
 
+Use `baton run --release` to run the release profile. Everything after `--` is passed to the program unchanged:
+
+```bash
+baton run -- --port 8080 "two words"
+```
+
+A normal run displays only the program's output. Use `-v`, `-vv`, or `-vvv` to include compiler and build details; build failures are always shown.
+
 ## Project layout
 
 `baton new hello-doria` creates:

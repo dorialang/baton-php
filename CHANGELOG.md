@@ -12,6 +12,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Dor
 - Project creation with a versioned `Baton.toml` and accepted Doria template.
 - Upward project discovery and `baton check`.
 - Deterministic development and release builds through `baton build`.
+- Build-and-run orchestration with program stream, argument, and exit-code forwarding.
 - Safe compiler invocation with argument vectors and exit-code forwarding.
 - Deterministic compiler discovery, machine-readable identity checks, host validation, and installed-component hash verification.
 - `baton doctor` and `baton version` toolchain reporting.

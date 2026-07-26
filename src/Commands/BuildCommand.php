@@ -11,6 +11,7 @@ use Doria\Baton\Project\ProjectLocator;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Output\OutputInterface;
 
 #[AsCommand(
@@ -68,8 +69,17 @@ final class BuildCommand extends BatonCommand
         $arguments[] = '--out';
         $arguments[] = $artifact;
 
-        $exitCode = (new CompilerAdapter($toolchain->compilerPath))
-            ->passthrough($arguments, $projectRoot);
+        $compilerAdapter = new CompilerAdapter($toolchain->compilerPath);
+        if ($output instanceof BufferedOutput) {
+            $result = $compilerAdapter->capture($arguments, $projectRoot);
+            $exitCode = $result->exitCode;
+            if ($exitCode !== 0) {
+                fwrite(STDOUT, $result->stdout);
+                fwrite(STDERR, $result->stderr);
+            }
+        } else {
+            $exitCode = $compilerAdapter->passthrough($arguments, $projectRoot);
+        }
         if ($exitCode !== 0) {
             $this->removeIfPresent($artifact);
             $this->removeIfPresent($metadata);
