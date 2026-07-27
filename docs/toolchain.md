@@ -67,20 +67,40 @@ An installed toolchain records its exact components in `toolchain.json`:
       "version": "2026.03.1-canary",
       "path": "bin/doriac",
       "sha256": "<64 lowercase hexadecimal characters>"
+    },
+    "doria-lsp": {
+      "version": "2026.03.1-canary",
+      "path": "bin/doria-lsp",
+      "sha256": "<64 lowercase hexadecimal characters>"
     }
   }
 }
 ```
 
 Component paths must be relative and remain inside the toolchain root. Baton validates the manifest version, toolchain version, host platform, architecture, compiler version, and compiler SHA-256 digest before execution.
+The language-server component must carry the same toolchain version, remain
+inside the toolchain root, and match its recorded digest.
 
 `toolchain.json` is internal distribution metadata. It is not a Doria project manifest, package lockfile, or dependency resolver input.
 
 ## Diagnostics
 
-`baton doctor` reports the selected compiler path and source, compiler identity, host, manifest status, and hash status using `PASS`, `WARNING`, and `FAIL`.
+`baton doctor` reports Baton and toolchain versions, release channel, executable
+and runtime paths, host identity, the selected compiler, `doria-lsp`, manifest
+and hash status, and writable build and cache locations using `PASS`, `WARNING`,
+and `FAIL`.
 
 The command can run outside a Doria project and must not print secrets or unrelated environment values.
+Outside a project, the build-location check is a warning rather than a failure.
+When source development uses `--compiler` instead of an installed manifest,
+component hashes, `doria-lsp`, and the private runtime cannot be verified and
+are reported as warnings.
+
+The cache check follows the host convention:
+
+- `%LOCALAPPDATA%\Doria\cache` on Windows;
+- `~/Library/Caches/Doria` on macOS;
+- `$XDG_CACHE_HOME/doria`, or `~/.cache/doria`, on Linux.
 
 Typical failures use Baton diagnostics:
 

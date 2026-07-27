@@ -75,6 +75,7 @@ final class ToolchainLocator
                 'toolchain.json'
             );
             $manifest->verifyCompilerHash();
+            $manifest->verifyLanguageServerHash();
 
             return $this->select($path, 'toolchain.json', $host, $manifest);
         }

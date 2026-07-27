@@ -46,14 +46,21 @@ abstract class TestCase extends PHPUnitTestCase
         return PHP_OS_FAMILY === 'Windows' ? 'doriac.exe' : 'doriac';
     }
 
+    protected function languageServerName(): string
+    {
+        return PHP_OS_FAMILY === 'Windows' ? 'doria-lsp.exe' : 'doria-lsp';
+    }
+
     /**
      * @param list<string> $arguments
+     * @param array<string, string>|null $environment
      * @return array{exitCode: int, stdout: string, stderr: string}
      */
     protected function runBaton(
         array $arguments,
         string $workingDirectory,
         string $input = '',
+        ?array $environment = null,
     ): array
     {
         $command = [
@@ -66,7 +73,17 @@ abstract class TestCase extends PHPUnitTestCase
             1 => ['pipe', 'w'],
             2 => ['pipe', 'w'],
         ];
-        $process = proc_open($command, $descriptors, $pipes, $workingDirectory);
+        $currentEnvironment = getenv();
+        $processEnvironment = $environment === null
+            ? null
+            : array_merge($currentEnvironment, $environment);
+        $process = proc_open(
+            $command,
+            $descriptors,
+            $pipes,
+            $workingDirectory,
+            $processEnvironment,
+        );
         self::assertIsResource($process);
         if ($input !== '') {
             self::assertSame(strlen($input), fwrite($pipes[0], $input));

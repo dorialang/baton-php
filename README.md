@@ -23,7 +23,8 @@ baton run
 
 A Doria toolchain distribution contains Baton, `doriac`, `doria-lsp`, and the private runtime Baton needs. Using it does not require Rust, Cargo, PHP, Composer, or a repository checkout.
 
-Run `baton doctor` after installation to verify the toolchain components and their versions.
+Run `baton doctor` after installation to verify component versions and hashes,
+the private runtime, host compatibility, and writable project/cache locations.
 
 ## Commands
 

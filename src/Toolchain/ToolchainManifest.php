@@ -15,11 +15,15 @@ final readonly class ToolchainManifest
     public function __construct(
         public string $path,
         public string $toolchainVersion,
+        public string $channel,
         public string $platform,
         public string $architecture,
         public string $compilerPath,
         public string $compilerVersion,
         public string $compilerHash,
+        public string $languageServerPath,
+        public string $languageServerVersion,
+        public string $languageServerHash,
     ) {
     }
 
@@ -48,6 +52,7 @@ final readonly class ToolchainManifest
         }
 
         $toolchainVersion = self::stringField($value, 'toolchainVersion');
+        $channel = self::stringField($value, 'channel');
         $platform = self::stringField($value, 'platform');
         $architecture = self::stringField($value, 'architecture');
         $components = $value['components'] ?? null;
@@ -61,17 +66,47 @@ final readonly class ToolchainManifest
         if (preg_match('/^[a-f0-9]{64}$/', $compilerHash) !== 1) {
             throw self::invalid('`components.doriac.sha256` must be a SHA-256 digest.');
         }
+        $languageServer = $components['doria-lsp'] ?? null;
+        if (!is_array($languageServer)) {
+            throw self::invalid('The toolchain manifest is missing `components.doria-lsp`.');
+        }
+        $languageServerVersion = self::stringField(
+            $languageServer,
+            'version',
+            'components.doria-lsp.',
+        );
+        $relativeLanguageServerPath = self::stringField(
+            $languageServer,
+            'path',
+            'components.doria-lsp.',
+        );
+        $languageServerHash = strtolower(self::stringField(
+            $languageServer,
+            'sha256',
+            'components.doria-lsp.',
+        ));
+        if (preg_match('/^[a-f0-9]{64}$/', $languageServerHash) !== 1) {
+            throw self::invalid('`components.doria-lsp.sha256` must be a SHA-256 digest.');
+        }
 
         $compilerPath = self::containedComponentPath(dirname($path), $relativeCompilerPath);
+        $languageServerPath = self::containedComponentPath(
+            dirname($path),
+            $relativeLanguageServerPath,
+        );
 
         return new self(
             $path,
             $toolchainVersion,
+            $channel,
             $platform,
             $architecture,
             $compilerPath,
             $compilerVersion,
             $compilerHash,
+            $languageServerPath,
+            $languageServerVersion,
+            $languageServerHash,
         );
     }
 
@@ -80,10 +115,21 @@ final readonly class ToolchainManifest
         if (
             $this->toolchainVersion !== $expectedVersion
             || $this->compilerVersion !== $expectedVersion
+            || $this->languageServerVersion !== $expectedVersion
         ) {
             throw self::invalid(
                 "Baton expects toolchain {$expectedVersion}, but the manifest records "
-                    . "{$this->toolchainVersion} and doriac {$this->compilerVersion}."
+                    . "{$this->toolchainVersion}, doriac {$this->compilerVersion}, "
+                    . "and doria-lsp {$this->languageServerVersion}."
+            );
+        }
+        $expectedChannel = str_ends_with($expectedVersion, '-canary')
+            ? 'canary'
+            : (str_ends_with($expectedVersion, '-rc') ? 'rc' : 'stable');
+        if ($this->channel !== $expectedChannel) {
+            throw self::invalid(
+                "The manifest channel is {$this->channel}, but {$expectedVersion} "
+                    . "belongs to the {$expectedChannel} channel."
             );
         }
         if ($this->platform !== $host->name || $this->architecture !== $host->architecture) {
@@ -96,24 +142,42 @@ final readonly class ToolchainManifest
 
     public function verifyCompilerHash(): void
     {
+        $this->verifyComponentHash(
+            'doriac',
+            $this->compilerPath,
+            $this->compilerHash,
+        );
+    }
+
+    public function verifyLanguageServerHash(): void
+    {
+        $this->verifyComponentHash(
+            'doria-lsp',
+            $this->languageServerPath,
+            $this->languageServerHash,
+        );
+    }
+
+    private function verifyComponentHash(string $component, string $path, string $expected): void
+    {
         $root = realpath(dirname($this->path));
-        $compiler = realpath($this->compilerPath);
+        $resolved = realpath($path);
         if (
             $root === false
-            || $compiler === false
-            || !self::isWithin($compiler, $root)
+            || $resolved === false
+            || !self::isWithin($resolved, $root)
         ) {
             throw self::invalid(
-                "The doriac component resolves outside the toolchain root:\n"
-                    . "    {$this->compilerPath}"
+                "The {$component} component is missing or resolves outside the toolchain root:\n"
+                    . "    {$path}"
             );
         }
 
-        $actual = @hash_file('sha256', $this->compilerPath);
-        if (!is_string($actual) || !hash_equals($this->compilerHash, strtolower($actual))) {
+        $actual = @hash_file('sha256', $path);
+        if (!is_string($actual) || !hash_equals($expected, strtolower($actual))) {
             throw self::invalid(
-                "The doriac component hash does not match toolchain.json:\n"
-                    . "    {$this->compilerPath}"
+                "The {$component} component hash does not match toolchain.json:\n"
+                    . "    {$path}"
             );
         }
     }

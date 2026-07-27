@@ -50,9 +50,16 @@ final class ToolchainLocatorTest extends TestCase
         $root = $this->temporaryDirectory('manifest');
         $baton = $this->batonExecutable($root);
         $compiler = $root . '/components/' . $this->compilerName();
+        $languageServer = $root . '/components/' . $this->languageServerName();
         $this->writeExecutable($compiler, "manifest compiler\n");
+        $this->writeExecutable($languageServer, "manifest language server\n");
         $this->writeExecutable(dirname($baton) . '/' . $this->compilerName(), "beside\n");
-        $this->writeManifest($root, 'components/' . $this->compilerName(), $compiler);
+        $this->writeManifest(
+            $root,
+            'components/' . $this->compilerName(),
+            $compiler,
+            languageServerPath: $languageServer,
+        );
 
         $selection = (new ToolchainLocator(
             null,
@@ -183,6 +190,36 @@ final class ToolchainLocatorTest extends TestCase
         $locator->locate();
     }
 
+    public function testManifestLanguageServerHashMismatchIsRejected(): void
+    {
+        $root = $this->temporaryDirectory('language-server-hash');
+        $baton = $this->batonExecutable($root);
+        $compiler = $root . '/components/' . $this->compilerName();
+        $languageServer = $root . '/components/' . $this->languageServerName();
+        $this->writeExecutable($compiler, "compiler\n");
+        $this->writeExecutable($languageServer, "language server\n");
+        $this->writeManifest(
+            $root,
+            'components/' . $this->compilerName(),
+            $compiler,
+            languageServerPath: $languageServer,
+        );
+        self::assertNotFalse(file_put_contents($languageServer, "tampered\n"));
+
+        $locator = new ToolchainLocator(
+            null,
+            false,
+            $baton,
+            ['PATH' => ''],
+            $this->host,
+            $this->identityProbe(),
+        );
+
+        $this->expectException(BatonError::class);
+        $this->expectExceptionMessage('Invalid Toolchain Manifest');
+        $locator->locate();
+    }
+
     public function testManifestCompilerSymlinkCannotEscapeToolchainRoot(): void
     {
         if (PHP_OS_FAMILY === 'Windows') {
@@ -242,7 +279,12 @@ final class ToolchainLocatorTest extends TestCase
         string $relativeCompilerPath,
         string $compilerPath,
         ?string $hash = null,
+        ?string $languageServerPath = null,
     ): void {
+        $languageServerPath ??= $root . '/components/' . $this->languageServerName();
+        if (!is_file($languageServerPath)) {
+            $this->writeExecutable($languageServerPath, "language server\n");
+        }
         $manifest = [
             'schema' => 1,
             'toolchainVersion' => Application::VERSION,
@@ -254,6 +296,11 @@ final class ToolchainLocatorTest extends TestCase
                     'version' => Application::VERSION,
                     'path' => $relativeCompilerPath,
                     'sha256' => $hash ?? hash_file('sha256', $compilerPath),
+                ],
+                'doria-lsp' => [
+                    'version' => Application::VERSION,
+                    'path' => 'components/' . $this->languageServerName(),
+                    'sha256' => hash_file('sha256', $languageServerPath),
                 ],
             ],
         ];
