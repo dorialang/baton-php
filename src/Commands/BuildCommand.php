@@ -28,6 +28,12 @@ final class BuildCommand extends BatonCommand
             InputOption::VALUE_NONE,
             'Build an optimized release artifact',
         );
+        $this->addOption(
+            'out',
+            'o',
+            InputOption::VALUE_REQUIRED,
+            'Write the artifact to this path instead of the managed build directory',
+        );
         CompilerOptions::configure($this);
     }
 
@@ -38,24 +44,37 @@ final class BuildCommand extends BatonCommand
         $toolchain = CompilerOptions::locate($input);
         $release = (bool) $input->getOption('release');
         $profile = $release ? 'release' : 'development';
-        $directory = $projectRoot
-            . DIRECTORY_SEPARATOR
-            . 'build'
-            . DIRECTORY_SEPARATOR
-            . $toolchain->identity->target
-            . DIRECTORY_SEPARATOR
-            . $profile;
-        $artifact = $directory
-            . DIRECTORY_SEPARATOR
-            . $manifest->name
-            . (PHP_OS_FAMILY === 'Windows' ? '.exe' : '');
-        $metadata = $directory . DIRECTORY_SEPARATOR . 'build.json';
+
+        /** @var string|null $out */
+        $out = $input->getOption('out');
+        if ($out !== null && $out !== '') {
+            // Explicit output path: write exactly there and skip the managed
+            // build/ layout and its build.json metadata.
+            $artifact = $this->absolutePath($out, getcwd() ?: $projectRoot);
+            $directory = dirname($artifact);
+            $metadata = null;
+        } else {
+            $directory = $projectRoot
+                . DIRECTORY_SEPARATOR
+                . 'build'
+                . DIRECTORY_SEPARATOR
+                . $toolchain->identity->target
+                . DIRECTORY_SEPARATOR
+                . $profile;
+            $artifact = $directory
+                . DIRECTORY_SEPARATOR
+                . $manifest->name
+                . (PHP_OS_FAMILY === 'Windows' ? '.exe' : '');
+            $metadata = $directory . DIRECTORY_SEPARATOR . 'build.json';
+        }
 
         if (!is_dir($directory) && !@mkdir($directory, 0o755, true) && !is_dir($directory)) {
             throw $this->outputError("Failed to create:\n    {$directory}");
         }
         $this->removePrevious($artifact);
-        $this->removePrevious($metadata);
+        if ($metadata !== null) {
+            $this->removePrevious($metadata);
+        }
 
         $arguments = [
             'compile',
@@ -94,23 +113,34 @@ final class BuildCommand extends BatonCommand
             );
         }
 
-        $json = json_encode([
-            'package' => $manifest->name,
-            'packageVersion' => $manifest->version,
-            'toolchainVersion' => $toolchain->identity->toolchainVersion,
-            'target' => $toolchain->identity->target,
-            'profile' => $profile,
-        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-        if ($json === false || @file_put_contents($metadata, $json . "\n") === false) {
-            $this->removeIfPresent($artifact);
-            throw new BatonError(
-                'B0403',
-                'Build Metadata Could Not Be Written',
-                "Failed to write:\n    {$metadata}",
-            );
+        if ($metadata !== null) {
+            $json = json_encode([
+                'package' => $manifest->name,
+                'packageVersion' => $manifest->version,
+                'toolchainVersion' => $toolchain->identity->toolchainVersion,
+                'target' => $toolchain->identity->target,
+                'profile' => $profile,
+            ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+            if ($json === false || @file_put_contents($metadata, $json . "\n") === false) {
+                $this->removeIfPresent($artifact);
+                throw new BatonError(
+                    'B0403',
+                    'Build Metadata Could Not Be Written',
+                    "Failed to write:\n    {$metadata}",
+                );
+            }
         }
 
         return 0;
+    }
+
+    private function absolutePath(string $path, string $base): string
+    {
+        $isAbsolute = str_starts_with($path, '/')
+            || str_starts_with($path, '\\')
+            || preg_match('/^[A-Za-z]:[\\\\\/]/', $path) === 1;
+
+        return $isAbsolute ? $path : $base . DIRECTORY_SEPARATOR . $path;
     }
 
     private function removePrevious(string $path): void
