@@ -21,7 +21,7 @@ final class DoctorCommandTest extends TestCase
             environment: $this->cacheEnvironment($root),
         );
 
-        self::assertSame(0, $result['exitCode']);
+        self::assertSame(0, $result['exitCode'], $result['stdout']);
         self::assertSame('', $result['stderr']);
         self::assertStringContainsString('PASS  Baton version', $result['stdout']);
         self::assertStringContainsString(Application::VERSION, $result['stdout']);
@@ -66,7 +66,7 @@ TOML,
             environment: $this->cacheEnvironment($root),
         );
 
-        self::assertSame(0, $result['exitCode']);
+        self::assertSame(0, $result['exitCode'], $result['stdout']);
         self::assertStringContainsString(
             'PASS  build location',
             $result['stdout'],
@@ -135,8 +135,10 @@ PHP),
     /** @return array<string, string> */
     private function cacheEnvironment(string $root): array
     {
-        return PHP_OS_FAMILY === 'Windows'
-            ? ['LOCALAPPDATA' => $root . '/cache']
-            : ['XDG_CACHE_HOME' => $root . '/cache'];
+        return match (PHP_OS_FAMILY) {
+            'Windows' => ['LOCALAPPDATA' => $root . '/cache'],
+            'Darwin' => ['HOME' => $root],
+            default => ['XDG_CACHE_HOME' => $root . '/cache'],
+        };
     }
 }

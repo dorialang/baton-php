@@ -22,6 +22,11 @@ BATON_DORIAC=/absolute/path/to/doriac php bin/baton check --development
 ```
 
 An explicit path can live anywhere. No sibling repository layout is assumed.
+The path must name a compiled `doriac` artifact. A repository launcher that
+executes `cargo run` is useful for deliberate compiler development, but it is
+not an installed compiler and must not be linked into a machine-global tool
+name. Doria contributors refresh the compiler and language server into Cargo's
+cross-platform install root after each delivered stage, slice, or beat.
 
 ## Compiler identity
 
@@ -30,6 +35,15 @@ Every selected compiler must successfully answer:
 ```bash
 doriac --version --json
 ```
+
+Baton bounds this identity probe. A selected executable that cannot answer
+promptly is rejected instead of being allowed to hold a Cargo workspace lock or
+leave an editor waiting indefinitely.
+
+Baton also recognizes and rejects Doria's repository `bin/doriac` source
+launcher before starting it. The launcher remains available by its explicit
+repository path for compiler development, but it cannot stand in for a compiled
+toolchain component.
 
 Schema 1 contains:
 

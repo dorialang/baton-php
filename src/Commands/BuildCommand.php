@@ -101,7 +101,9 @@ final class BuildCommand extends BatonCommand
         }
         if ($exitCode !== 0) {
             $this->removeIfPresent($artifact);
-            $this->removeIfPresent($metadata);
+            if ($metadata !== null) {
+                $this->removeIfPresent($metadata);
+            }
 
             return $exitCode;
         }

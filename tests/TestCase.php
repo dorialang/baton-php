@@ -24,9 +24,11 @@ abstract class TestCase extends PHPUnitTestCase
             . '-'
             . bin2hex(random_bytes(6));
         self::assertTrue(mkdir($path, 0o755, true));
-        $this->temporaryDirectories[] = $path;
+        $canonical = realpath($path);
+        self::assertIsString($canonical);
+        $this->temporaryDirectories[] = $canonical;
 
-        return $path;
+        return $canonical;
     }
 
     protected function writeExecutable(string $path, string $contents = "compiler\n"): void

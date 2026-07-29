@@ -32,6 +32,8 @@ This file contains repository-specific instructions for coding agents. Human con
 - Do not build reusable PHP architecture for the eventual Baton implementation. Durable internals belong to the later Doria-native repository.
 - Preserve useful user-facing feedback in commands, fixtures, and integration tests rather than adding abstraction layers.
 - Invoke `doriac` only through `CompilerAdapter`.
+- Treat selected compiler paths as compiled artifacts. A Cargo-backed source launcher may be used explicitly while developing the compiler, but it must never occupy an installed or machine-global `doriac` path.
+- Bound identity probes so a broken or source-building compiler cannot indefinitely block Baton, an IDE, or another Cargo invocation.
 - Use argument vectors, never interpolated shell command strings.
 - Preserve standard streams, signals where supported, and exact child exit codes.
 - Validate component identities, versions, target triples, containment, and hashes before execution.
