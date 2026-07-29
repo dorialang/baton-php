@@ -76,6 +76,9 @@ doria-toolchain-<calver>-<platform>-<architecture>/
 │   └── doria/
 │       ├── baton.phar
 │       └── php/
+│           ├── bin/php[.exe]
+│           ├── runtime.json
+│           └── LICENSES/
 ├── share/
 │   └── doria/
 │       └── templates/
@@ -84,7 +87,7 @@ doria-toolchain-<calver>-<platform>-<architecture>/
 └── LICENSES/
 ```
 
-The public launcher resolves the private PHP runtime relative to the installed toolchain. It does not load a system PHP installation, user `php.ini`, or system extensions.
+The public launcher resolves the private PHP runtime relative to the installed toolchain and invokes the PHAR with `-n`. It has no system-PHP fallback and does not load a user `php.ini`, system configuration directory, or shared extension. See [Private Baton runtime](runtime.md) for the pinned build and isolation contract.
 
 `toolchain.json` records the exact compatible components and their hashes. It is internal installation metadata and is unrelated to project dependency resolution.
 

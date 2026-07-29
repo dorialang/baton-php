@@ -1,0 +1,30 @@
+#!/bin/sh
+
+set -eu
+
+source_path=$0
+while [ -L "$source_path" ]; do
+    source_dir=$(CDPATH= cd -- "$(dirname -- "$source_path")" && pwd)
+    link_target=$(readlink "$source_path")
+    case "$link_target" in
+        /*) source_path=$link_target ;;
+        *) source_path=$source_dir/$link_target ;;
+    esac
+done
+
+bin_dir=$(CDPATH= cd -- "$(dirname -- "$source_path")" && pwd)
+toolchain_root=$(CDPATH= cd -- "$bin_dir/.." && pwd)
+runtime=$toolchain_root/libexec/doria/php/bin/php
+application=$toolchain_root/libexec/doria/baton.phar
+
+if [ ! -x "$runtime" ]; then
+    echo "baton: private PHP runtime is missing or not executable: $runtime" >&2
+    exit 70
+fi
+
+if [ ! -f "$application" ]; then
+    echo "baton: application archive is missing: $application" >&2
+    exit 70
+fi
+
+exec "$runtime" -n "$application" "$@"

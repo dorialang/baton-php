@@ -14,6 +14,12 @@ Baton evaluates compiler sources in this order:
 
 Public mode never consults `BATON_DORIAC` or `PATH`.
 
+## Baton runtime discovery
+
+The public `baton` launcher has a stricter, fixed discovery rule: it resolves `libexec/doria/php/bin/php` (or `php.exe`) relative to its own installed toolchain root and starts `libexec/doria/baton.phar` with `-n`. It never consults `PATH`, `PHPRC`, `PHP_INI_SCAN_DIR`, a Composer installation, or project files to select or configure PHP.
+
+Unlike the compiler development overrides below, there is no environment-variable or command-line override for the public Baton runtime. Source-checkout development continues to use `php bin/baton`; installed toolchains use only the bundled runtime. See [Private Baton runtime](runtime.md) for the build and isolation contract.
+
 Examples for source development:
 
 ```bash

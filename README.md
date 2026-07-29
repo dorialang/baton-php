@@ -106,6 +106,7 @@ Read [Architecture](docs/architecture.md) for the component and ownership model.
 
 - [Project manifest](docs/project-manifest.md)
 - [Toolchain discovery and validation](docs/toolchain.md)
+- [Private Baton runtime](docs/runtime.md)
 - [Architecture](docs/architecture.md)
 - [Release process](docs/releasing.md)
 - [Development plan](docs/baton-php-development-plan.md)

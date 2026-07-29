@@ -1,0 +1,95 @@
+name: Private PHP runtime
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/private-runtime.yml'
+      - 'composer.json'
+      - 'composer.lock'
+      - 'packaging/**'
+      - 'src/**'
+      - 'templates/**'
+      - 'tests/Distribution/**'
+  push:
+    branches:
+      - develop
+    paths:
+      - '.github/workflows/private-runtime.yml'
+      - 'composer.json'
+      - 'composer.lock'
+      - 'packaging/**'
+      - 'src/**'
+      - 'templates/**'
+      - 'tests/Distribution/**'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: linux-x86_64
+            runner: ubuntu-24.04
+            executable: build/private-runtime/bin/php
+          - target: linux-aarch64
+            runner: ubuntu-24.04-arm
+            executable: build/private-runtime/bin/php
+          - target: macos-x86_64
+            runner: macos-15-intel
+            executable: build/private-runtime/bin/php
+          - target: macos-aarch64
+            runner: macos-15
+            executable: build/private-runtime/bin/php
+          - target: windows-x86_64
+            runner: windows-2025
+            executable: build/private-runtime/bin/php.exe
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+
+    steps:
+      - name: Check out Baton
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          coverage: none
+
+      - name: Install contributor dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Build Baton PHAR
+        run: composer build:phar
+
+      - name: Build and verify private runtime
+        run: php packaging/php-runtime/build.php --prepare --target ${{ matrix.target }} --output build/private-runtime
+
+      - name: Smoke-test with only the private runtime
+        shell: bash
+        run: |
+          "${{ matrix.executable }}" -n build/baton.phar --version
+          mkdir -p build/runtime-smoke
+          cd build/runtime-smoke
+          "../../${{ matrix.executable }}" -n ../baton.phar new hello
+          test -f hello/Baton.toml
+          test -f hello/src/main.doria
+
+      - name: Upload runtime audit artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: baton-private-runtime-${{ matrix.target }}
+          path: |
+            build/private-runtime/
+            build/baton.phar
+            build/baton.phar.sha256
+            build/baton-dependencies.json
+            build/LICENSES/
+          if-no-files-found: error
+          retention-days: 7

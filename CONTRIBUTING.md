@@ -36,6 +36,15 @@ composer check
 
 `composer check` runs PHPUnit and PHPStan at the maximum configured level.
 
+Runtime and PHAR packaging has additional contributor commands:
+
+```bash
+composer runtime:plan
+composer build:phar
+```
+
+See [Private Baton runtime](docs/runtime.md) for the pinned inputs, native build requirements, isolation checks, generated inventories, and update procedure.
+
 ## Use a compiler during development
 
 Commands that invoke `doriac` accept an explicit compiler artifact:
@@ -77,6 +86,7 @@ Add the smallest test layer that proves the behavior:
 - Fake-compiler integration tests for exact arguments, streams, exit codes, and malformed machine output.
 - Real-compiler integration tests against an exact released component artifact.
 - Distribution tests against extracted archives, not source-tree entry points.
+- Runtime tests with a hostile PHP first on `PATH` and hostile ini environment variables.
 
 Cross-platform process or filesystem behavior must be exercised on Linux, macOS, and Windows.
 

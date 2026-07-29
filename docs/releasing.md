@@ -71,14 +71,24 @@ Each archive includes launchers, Baton, `doriac`, `doria-lsp`, the private PHP r
 2. Verify published checksums and component manifests.
 3. Confirm toolchain CalVer, platform, and architecture.
 4. Build the Baton PHAR without development dependencies.
-5. Add the matching isolated PHP runtime and launchers.
-6. Generate `toolchain.json` with relative component paths.
-7. Calculate and record final component hashes.
-8. Assemble the platform archive with normalized metadata.
-9. Extract it into a clean environment.
-10. Run user commands through the installed launcher.
-11. Verify relocation, offline use, spaces, Unicode, and a read-only toolchain root.
-12. Publish the archive, checksum, provenance, inventories, and test report.
+5. Build the matching isolated PHP runtime from the pinned specification.
+6. Verify the runtime under `-n` and add the platform launcher.
+7. Generate `toolchain.json` with relative component paths.
+8. Calculate and record final component hashes.
+9. Assemble the platform archive with normalized metadata.
+10. Extract it into a clean environment.
+11. Run user commands through the installed launcher.
+12. Verify relocation, offline use, spaces, Unicode, and a read-only toolchain root.
+13. Publish the archive, checksum, provenance, inventories, and test report.
+
+The Baton and runtime artifacts are built with:
+
+```bash
+composer build:phar
+php packaging/php-runtime/build.php
+```
+
+Release CI may add `--prepare` on a disposable runner. See [Private Baton runtime](runtime.md) for the immutable inputs, extension set, generated manifests, and security-update procedure.
 
 ## Clean-machine acceptance
 

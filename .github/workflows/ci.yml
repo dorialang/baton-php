@@ -38,3 +38,9 @@ jobs:
 
       - name: Run tests and static analysis
         run: composer check
+
+      - name: Build the production PHAR
+        run: composer build:phar
+
+      - name: Smoke-test the production PHAR
+        run: php build/baton.phar --version
