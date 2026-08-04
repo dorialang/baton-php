@@ -161,6 +161,33 @@ final class ToolchainLocatorTest extends TestCase
         self::assertSame('development PATH', $selection->source);
     }
 
+    public function testDoriaSourceLauncherIsRejectedBeforeCargoCanStart(): void
+    {
+        $root = $this->temporaryDirectory('source launcher');
+        $baton = $this->batonExecutable($root);
+        $launcher = $root . '/path/' . $this->compilerName();
+        $this->writeExecutable(
+            $launcher,
+            "#!/usr/bin/env php\n"
+                . "<?php\n"
+                . "// Development launcher for `doriac` (cargo run from source).\n",
+        );
+        $locator = new ToolchainLocator(
+            null,
+            true,
+            $baton,
+            ['PATH' => dirname($launcher)],
+            $this->host,
+            static function (): CompilerIdentity {
+                self::fail('The source launcher must be rejected before it is executed.');
+            },
+        );
+
+        $this->expectException(BatonError::class);
+        $this->expectExceptionMessage('Doria Source Launcher Is Not A Toolchain Component');
+        $locator->locate();
+    }
+
     public function testManifestHashMismatchIsRejectedBeforeCompilerExecution(): void
     {
         $root = $this->temporaryDirectory('hash');

@@ -18,6 +18,8 @@ use Doria\Baton\Diagnostics\BatonError;
  */
 final class ToolchainLocator
 {
+    private const IDENTITY_TIMEOUT_SECONDS = 10.0;
+
     private readonly string $batonExecutable;
 
     /** @var array<string, string> */
@@ -48,7 +50,10 @@ final class ToolchainLocator
             $batonExecutable ?? $runtimeExecutable
         );
         $this->identityProbe = $identityProbe ?? static function (string $path): CompilerIdentity {
-            $result = (new CompilerAdapter($path))->capture(['--version', '--json']);
+            $result = (new CompilerAdapter($path))->capture(
+                ['--version', '--json'],
+                timeoutSeconds: self::IDENTITY_TIMEOUT_SECONDS,
+            );
 
             return CompilerIdentity::fromResult($result, $path);
         };
@@ -158,8 +163,30 @@ final class ToolchainLocator
                     . "    {$path}"
             );
         }
+        if ($this->isDoriaSourceLauncher($path)) {
+            throw new BatonError(
+                'B0201',
+                'Doria Source Launcher Is Not A Toolchain Component',
+                "The compiler selected from {$source} is Doria's Cargo-backed source launcher:\n"
+                    . "    {$path}\n\n"
+                    . 'Install a compiled doriac artifact and select that executable instead.'
+            );
+        }
 
         return $path;
+    }
+
+    private function isDoriaSourceLauncher(string $path): bool
+    {
+        $handle = @fopen($path, 'rb');
+        if ($handle === false) {
+            return false;
+        }
+        $prefix = fread($handle, 8192);
+        fclose($handle);
+
+        return is_string($prefix)
+            && str_contains($prefix, 'Development launcher for `doriac` (cargo run from source).');
     }
 
     private function resolveBatonExecutable(string $path): string

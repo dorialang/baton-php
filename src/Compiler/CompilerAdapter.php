@@ -9,10 +9,10 @@ use Doria\Baton\Diagnostics\BatonError;
 /**
  * The single gateway for invoking `doriac` (plan B4).
  *
- * Every invocation uses an argument vector passed to {@see proc_open} — never a
- * shell string — so spaces, quotes, Unicode, and platform path separators in
- * arguments are handled by the OS, not by string interpolation. No Baton code
- * parses Doria source; this only runs the compiler and relays its result.
+ * Every invocation uses an argument vector — never a shell string — so spaces,
+ * quotes, Unicode, and platform path separators in arguments are handled by the
+ * OS, not by string interpolation. No Baton code parses Doria source; this only
+ * runs the compiler and relays its result.
  */
 final class CompilerAdapter
 {
@@ -51,21 +51,61 @@ final class CompilerAdapter
      *
      * @param list<string> $args
      */
-    public function capture(array $args, ?string $workingDirectory = null): CompilerResult
+    public function capture(
+        array $args,
+        ?string $workingDirectory = null,
+        ?float $timeoutSeconds = null,
+    ): CompilerResult
     {
         $descriptors = [
-            0 => ['file', 'php://stdin', 'r'],
+            0 => ['file', PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null', 'r'],
             1 => ['pipe', 'w'],
             2 => ['pipe', 'w'],
         ];
-
         $process = $this->open($args, $descriptors, $workingDirectory, $pipes);
-        $stdout = stream_get_contents($pipes[1]) ?: '';
-        $stderr = stream_get_contents($pipes[2]) ?: '';
+        stream_set_blocking($pipes[1], false);
+        stream_set_blocking($pipes[2], false);
+        $stdout = '';
+        $stderr = '';
+        $startedAt = hrtime(true);
+        do {
+            $stdout .= stream_get_contents($pipes[1]) ?: '';
+            $stderr .= stream_get_contents($pipes[2]) ?: '';
+            $status = proc_get_status($process);
+            if (!$status['running']) {
+                break;
+            }
+            if (
+                $timeoutSeconds !== null
+                && (hrtime(true) - $startedAt) / 1_000_000_000 >= $timeoutSeconds
+            ) {
+                proc_terminate($process);
+                $this->closePipes($pipes);
+                proc_close($process);
+                throw $this->timeoutError($timeoutSeconds);
+            }
+            usleep(10_000);
+        } while (true);
+
+        $stdout .= stream_get_contents($pipes[1]) ?: '';
+        $stderr .= stream_get_contents($pipes[2]) ?: '';
         $this->closePipes($pipes);
-        $exitCode = proc_close($process);
+        $closedExitCode = proc_close($process);
+        $exitCode = $status['exitcode'] >= 0 ? $status['exitcode'] : $closedExitCode;
 
         return new CompilerResult($exitCode, $stdout, $stderr);
+    }
+
+    private function timeoutError(float $timeoutSeconds): BatonError
+    {
+        return new BatonError(
+            'B0203',
+            'Doria Compiler Did Not Respond',
+            "The compiler at:\n    {$this->doriacPath}\n"
+                . "did not respond within {$timeoutSeconds}s.\n\n"
+                . 'Use a compiled doriac artifact. Source launchers are for explicit '
+                . 'compiler development and are not installed toolchain components.'
+        );
     }
 
     /**
