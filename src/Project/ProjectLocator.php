@@ -34,8 +34,9 @@ final class ProjectLocator
             'B0301',
             'No Baton Project Found',
             "No " . self::MANIFEST_FILE . " was found in the current directory or any\n"
-                . "parent. Run this command inside a Baton project, or create one with\n"
-                . "`baton new <name>`."
+                . 'parent.',
+            ['Run this command inside a Baton project, or create one:'],
+            ['baton new <name>'],
         );
     }
 }

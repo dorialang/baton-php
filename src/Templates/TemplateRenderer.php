@@ -28,7 +28,13 @@ final class TemplateRenderer
             throw new BatonError(
                 'B0103',
                 'Project Template Not Found',
-                "The project template is missing:\n    {$this->templateRoot}"
+                "The project template is missing:\n    {$this->templateRoot}",
+                [
+                    'Templates ship with Baton, so this means the installation is',
+                    'incomplete. Reinstall the Doria toolchain. To confirm what is',
+                    'installed:',
+                ],
+                ['baton doctor'],
             );
         }
 
@@ -69,7 +75,12 @@ final class TemplateRenderer
             throw new BatonError(
                 'B0104',
                 'Project Directory Could Not Be Created',
-                "Failed to create:\n    {$directory}"
+                "Failed to create:\n    {$directory}",
+                [
+                    'No Baton command fixes this. The parent directory is not writable,',
+                    'or the path already exists as a file. Create the project somewhere',
+                    'writable instead.',
+                ],
             );
         }
     }

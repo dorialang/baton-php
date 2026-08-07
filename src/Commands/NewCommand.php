@@ -33,7 +33,9 @@ final class NewCommand extends BatonCommand
                 'B0105',
                 'Invalid Project Name',
                 "\"{$name}\" is not a valid package name. Use lowercase letters,\n"
-                    . "digits, '-', or '_' (for example: hello-doria)."
+                    . "digits, '-', or '_'.",
+                ['Choose a name in that shape, for example:'],
+                ['baton new hello-doria'],
             );
         }
 
@@ -42,7 +44,12 @@ final class NewCommand extends BatonCommand
             throw new BatonError(
                 'B0106',
                 'Destination Already Exists',
-                "A file or directory already exists at:\n    {$destination}"
+                "A file or directory already exists at:\n    {$destination}",
+                [
+                    'Baton will not overwrite it. Choose another name, or remove the',
+                    'existing path yourself first:',
+                ],
+                ["baton new {$name}-2"],
             );
         }
 

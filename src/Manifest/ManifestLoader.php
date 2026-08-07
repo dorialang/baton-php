@@ -183,6 +183,18 @@ final class ManifestLoader
 
     private function invalid(string $body): BatonError
     {
-        return new BatonError('B0302', 'Invalid Project Manifest', $body);
+        // The manifest is edited by hand, so the remedy is an edit rather than a
+        // command. Name the field contract instead of leaving the reader to
+        // guess which spelling Baton accepts.
+        return new BatonError(
+            'B0302',
+            'Invalid Project Manifest',
+            $body,
+            [
+                'Correct Baton.toml against the field contract in the project manifest',
+                'documentation, then re-check the project:',
+            ],
+            ['baton check'],
+        );
     }
 }

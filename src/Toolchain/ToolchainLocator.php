@@ -113,11 +113,26 @@ final class ToolchainLocator
             : "For source development, pass `--compiler <path>` or opt into\n"
                 . "`--development` before using BATON_DORIAC or PATH.";
 
+        // Two different readers reach this line. A user with an installed
+        // toolchain needs to reinstall it; someone building the compiler needs
+        // to point Baton at the artifact they just built. Naming only one of
+        // those leaves the other guessing, so name both.
         throw new BatonError(
             'B0202',
             'Doria Compiler Not Found',
             "Baton could not find a compiler recorded in toolchain.json or beside:\n"
-                . "    {$this->batonExecutable}\n\n{$developmentHelp}"
+                . "    {$this->batonExecutable}\n\n{$developmentHelp}",
+            $this->developmentMode
+                ? [
+                    'Point Baton at the compiler artifact you built, or put it on PATH:',
+                ]
+                : [
+                    'Install a Doria toolchain, which ships Baton, doriac, doria-lsp, and',
+                    'the private runtime together. To inspect what Baton can currently see:',
+                ],
+            $this->developmentMode
+                ? ['baton run --compiler /absolute/path/to/doriac']
+                : ['baton doctor'],
         );
     }
 
@@ -160,7 +175,9 @@ final class ToolchainLocator
                 'B0202',
                 'Doria Compiler Not Found',
                 "The compiler selected from {$source} is missing or not executable:\n"
-                    . "    {$path}"
+                    . "    {$path}",
+                ['Confirm which compiler Baton selected and whether it is still present:'],
+                ['baton doctor'],
             );
         }
         if ($this->isDoriaSourceLauncher($path)) {
@@ -169,7 +186,16 @@ final class ToolchainLocator
                 'Doria Source Launcher Is Not A Toolchain Component',
                 "The compiler selected from {$source} is Doria's Cargo-backed source launcher:\n"
                     . "    {$path}\n\n"
-                    . 'Install a compiled doriac artifact and select that executable instead.'
+                    . 'Install a compiled doriac artifact and select that executable instead.',
+                [
+                    'The launcher rebuilds from source on each call, so it cannot carry the',
+                    'stable identity and digest a toolchain component needs. Build the',
+                    'compiler once, then select the compiled artifact:',
+                ],
+                [
+                    'cargo build --release -p doriac',
+                    'baton run --compiler /absolute/path/to/target/release/doriac',
+                ],
             );
         }
 

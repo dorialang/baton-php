@@ -223,6 +223,19 @@ final readonly class ToolchainManifest
 
     private static function invalid(string $body): BatonError
     {
-        return new BatonError('B0204', 'Invalid Toolchain Manifest', $body);
+        // toolchain.json is distribution metadata, not something a user edits.
+        // A broken one means the installation is damaged, so the remedy is to
+        // reinstall the toolchain, never to hand-repair the file.
+        return new BatonError(
+            'B0204',
+            'Invalid Toolchain Manifest',
+            $body,
+            [
+                'toolchain.json is written by the installer, so this usually means the',
+                'installation is incomplete or damaged. Reinstall the Doria toolchain.',
+                'To see what Baton can currently read:',
+            ],
+            ['baton doctor'],
+        );
     }
 }
