@@ -88,21 +88,35 @@ final readonly class CompilerIdentity
                 "Baton:  {$expectedVersion}\n"
                     . "doriac: {$this->toolchainVersion}\n\n"
                     . "The compiler at:\n    {$path}\n"
-                    . "does not belong to this Baton toolchain."
+                    . "does not belong to this Baton toolchain.",
+                [
+                    'Toolchain components ship together and must report the same version.',
+                    'Check which component is behind, then install a matching toolchain:',
+                ],
+                ['baton doctor'],
             );
         }
         if ($this->target !== $host->target()) {
             throw self::incompatible(
                 "Host:    {$host->target()}\n"
                     . "doriac: {$this->target}\n\n"
-                    . "The selected compiler was built for a different target."
+                    . "The selected compiler was built for a different target.",
+                [
+                    'Install the Doria toolchain built for this host rather than reusing',
+                    'a compiler copied from another machine. To confirm the host target:',
+                ],
+                ['baton doctor'],
             );
         }
     }
 
-    private static function incompatible(string $body): BatonError
+    /**
+     * @param list<string> $help
+     * @param list<string> $run
+     */
+    private static function incompatible(string $body, array $help = [], array $run = []): BatonError
     {
-        return new BatonError('B0201', 'Incompatible Doria Compiler', $body);
+        return new BatonError('B0201', 'Incompatible Doria Compiler', $body, $help, $run);
     }
 
     private static function describe(mixed $value): string

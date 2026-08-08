@@ -104,7 +104,9 @@ final class CompilerAdapter
             "The compiler at:\n    {$this->doriacPath}\n"
                 . "did not respond within {$timeoutSeconds}s.\n\n"
                 . 'Use a compiled doriac artifact. Source launchers are for explicit '
-                . 'compiler development and are not installed toolchain components.'
+                . 'compiler development and are not installed toolchain components.',
+            ['Confirm which compiler Baton selected and whether it is a compiled artifact:'],
+            ['baton doctor'],
         );
     }
 
@@ -123,7 +125,9 @@ final class CompilerAdapter
             throw new BatonError(
                 'B0203',
                 'Doria Compiler Could Not Be Started',
-                "Failed to launch the compiler at:\n    {$this->doriacPath}"
+                "Failed to launch the compiler at:\n    {$this->doriacPath}",
+                ['Confirm the selected compiler still exists and is executable:'],
+                ['baton doctor'],
             );
         }
 

@@ -12,9 +12,9 @@ use Doria\Baton\Diagnostics\BatonError;
 /**
  * Resolves and validates `doriac` using the B5 discovery contract.
  *
- * Public mode never consults BATON_DORIAC or PATH. Those sources are available
- * only through the explicit development mode, preventing an unrelated compiler
- * installation from silently replacing the compiler shipped with Baton.
+ * Installed compiler sources always win. Callers may allow BATON_DORIAC and
+ * PATH as lower-priority development fallbacks without letting either replace
+ * the compiler shipped with Baton.
  */
 final class ToolchainLocator
 {
@@ -34,7 +34,7 @@ final class ToolchainLocator
      */
     public function __construct(
         private readonly ?string $override = null,
-        private readonly bool $developmentMode = false,
+        private readonly bool $allowDevelopmentFallbacks = false,
         ?string $batonExecutable = null,
         ?array $environment = null,
         private readonly ?Platform $host = null,
@@ -92,7 +92,7 @@ final class ToolchainLocator
             return $this->select($besideBaton, 'compiler beside Baton', $host);
         }
 
-        if ($this->developmentMode) {
+        if ($this->allowDevelopmentFallbacks) {
             $fromEnvironment = $this->environment['BATON_DORIAC'] ?? '';
             if (trim($fromEnvironment) !== '') {
                 return $this->select(
@@ -108,16 +108,30 @@ final class ToolchainLocator
             }
         }
 
-        $developmentHelp = $this->developmentMode
+        $developmentHelp = $this->allowDevelopmentFallbacks
             ? "No BATON_DORIAC override or doriac executable was found on the development PATH."
-            : "For source development, pass `--compiler <path>` or opt into\n"
-                . "`--development` before using BATON_DORIAC or PATH.";
+            : "This toolchain configuration does not allow BATON_DORIAC or PATH fallbacks.";
 
+        // Two different readers reach this line. A user with an installed
+        // toolchain needs to reinstall it; someone building the compiler needs
+        // to point Baton at the artifact they just built. Naming only one of
+        // those leaves the other guessing, so name both.
         throw new BatonError(
             'B0202',
             'Doria Compiler Not Found',
             "Baton could not find a compiler recorded in toolchain.json or beside:\n"
-                . "    {$this->batonExecutable}\n\n{$developmentHelp}"
+                . "    {$this->batonExecutable}\n\n{$developmentHelp}",
+            $this->allowDevelopmentFallbacks
+                ? [
+                    'Point Baton at the compiler artifact you built, or put it on PATH:',
+                ]
+                : [
+                    'Install a Doria toolchain, which ships Baton, doriac, doria-lsp, and',
+                    'the private runtime together. To inspect what Baton can currently see:',
+                ],
+            $this->allowDevelopmentFallbacks
+                ? ['baton run --compiler /absolute/path/to/doriac']
+                : ['baton doctor'],
         );
     }
 
@@ -160,7 +174,9 @@ final class ToolchainLocator
                 'B0202',
                 'Doria Compiler Not Found',
                 "The compiler selected from {$source} is missing or not executable:\n"
-                    . "    {$path}"
+                    . "    {$path}",
+                ['Confirm which compiler Baton selected and whether it is still present:'],
+                ['baton doctor'],
             );
         }
         if ($this->isDoriaSourceLauncher($path)) {
@@ -169,7 +185,16 @@ final class ToolchainLocator
                 'Doria Source Launcher Is Not A Toolchain Component',
                 "The compiler selected from {$source} is Doria's Cargo-backed source launcher:\n"
                     . "    {$path}\n\n"
-                    . 'Install a compiled doriac artifact and select that executable instead.'
+                    . 'Install a compiled doriac artifact and select that executable instead.',
+                [
+                    'The launcher rebuilds from source on each call, so it cannot carry the',
+                    'stable identity and digest a toolchain component needs. Build the',
+                    'compiler once, then select the compiled artifact:',
+                ],
+                [
+                    'cargo build --release -p doriac',
+                    'baton run --compiler /absolute/path/to/target/release/doriac',
+                ],
             );
         }
 

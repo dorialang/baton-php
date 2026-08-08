@@ -9,6 +9,36 @@ use Doria\Baton\Toolchain\Platform;
 
 final class CheckCommandTest extends TestCase
 {
+    public function testBootstrapFindsDevelopmentCompilerWithoutAFlag(): void
+    {
+        $root = $this->temporaryDirectory('flagless bootstrap project');
+        self::assertTrue(mkdir($root . '/src', 0o755, true));
+        self::assertNotFalse(file_put_contents($root . '/Baton.toml', <<<'TOML'
+manifest-version = 1
+
+[package]
+name = "flagless-check-fixture"
+version = "0.1.0"
+kind = "binary"
+entry = "src/main.doria"
+TOML));
+        self::assertNotFalse(file_put_contents(
+            $root . '/src/main.doria',
+            "function main(): void {}\n"
+        ));
+
+        $compiler = $this->writeFakeCompiler($root);
+        $result = $this->runBaton(
+            ['check'],
+            $root,
+            environment: ['BATON_DORIAC' => $compiler],
+        );
+
+        self::assertSame(0, $result['exitCode']);
+        self::assertSame("compiler stdout\n", $result['stdout']);
+        self::assertSame("compiler stderr\n", $result['stderr']);
+    }
+
     public function testCheckFindsNestedProjectAndPreservesCompilerStreamsAndExitCode(): void
     {
         $root = $this->temporaryDirectory('project with spaces');

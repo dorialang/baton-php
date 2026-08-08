@@ -113,6 +113,8 @@ final class RunCommand extends BatonCommand
                 'B0404',
                 'Built Program Could Not Be Started',
                 "Failed to run:\n    {$artifact}\n\n{$error->getMessage()}",
+                ['Rebuild the artifact, then run it again:'],
+                ['baton build', 'baton run'],
             );
         }
     }

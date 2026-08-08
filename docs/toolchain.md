@@ -9,10 +9,13 @@ Baton evaluates compiler sources in this order:
 1. An explicit `--compiler <path>` development override.
 2. The `doriac` component recorded in the installed `toolchain.json`.
 3. A `doriac` executable beside Baton.
-4. `BATON_DORIAC`, only when `--development` is present.
-5. `PATH`, only when `--development` is present.
+4. `BATON_DORIAC`.
+5. `PATH`.
 
-Public mode never consults `BATON_DORIAC` or `PATH`.
+The disposable PHP bootstrap automatically enables steps 4 and 5 so ordinary
+`baton check`, `baton build`, and `baton run` commands exercise the intended
+workflow without development-only flags. The later Doria-native Baton owns the
+final public distribution policy.
 
 ## Baton runtime discovery
 
@@ -24,7 +27,7 @@ Examples for source development:
 
 ```bash
 php bin/baton doctor --compiler /absolute/path/to/doriac
-BATON_DORIAC=/absolute/path/to/doriac php bin/baton check --development
+BATON_DORIAC=/absolute/path/to/doriac php bin/baton check
 ```
 
 An explicit path can live anywhere. No sibling repository layout is assumed.

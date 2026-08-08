@@ -22,8 +22,8 @@ This file contains repository-specific instructions for coding agents. Human con
 
 - Toolchain components use zero-padded CalVer; project packages use SemVer.
 - `Baton.toml`, command names, exit behavior, diagnostics, build layout, and installed layout are migration-sensitive public contracts.
-- The compiler discovery order is: explicit `--compiler`, installed `toolchain.json`, compiler beside Baton, `BATON_DORIAC` in explicit development mode, then `PATH` in explicit development mode.
-- A random compiler on `PATH` must never override the installed compiler in public mode.
+- The PHP bootstrap compiler discovery order is: explicit `--compiler`, installed `toolchain.json`, compiler beside Baton, `BATON_DORIAC`, then `PATH`.
+- Installed compiler sources must always take precedence over bootstrap development fallbacks. The later Doria-native Baton owns the final public distribution policy.
 - `toolchain.json` is internal distribution metadata, not a project manifest or lockfile.
 
 ## Implementation guardrails

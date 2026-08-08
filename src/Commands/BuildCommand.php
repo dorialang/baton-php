@@ -112,6 +112,8 @@ final class BuildCommand extends BatonCommand
                 'B0402',
                 'Compiler Did Not Produce Build Artifact',
                 "The compiler exited successfully without writing:\n    {$artifact}",
+                ['Rebuild with compiler and build detail shown, so the cause is visible:'],
+                ['baton build -vv'],
             );
         }
 
@@ -129,6 +131,8 @@ final class BuildCommand extends BatonCommand
                     'B0403',
                     'Build Metadata Could Not Be Written',
                     "Failed to write:\n    {$metadata}",
+                    ['Check that the build location is writable:'],
+                    ['baton doctor'],
                 );
             }
         }
@@ -164,6 +168,12 @@ final class BuildCommand extends BatonCommand
 
     private function outputError(string $body): BatonError
     {
-        return new BatonError('B0401', 'Build Output Could Not Be Prepared', $body);
+        return new BatonError(
+            'B0401',
+            'Build Output Could Not Be Prepared',
+            $body,
+            ['Check that the build and cache locations are writable:'],
+            ['baton doctor'],
+        );
     }
 }

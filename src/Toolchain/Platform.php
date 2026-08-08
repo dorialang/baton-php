@@ -27,7 +27,11 @@ final readonly class Platform
             default => throw new BatonError(
                 'B0204',
                 'Unsupported Host Platform',
-                "Baton does not have a toolchain target name for {$osFamily}."
+                "Baton does not have a toolchain target name for {$osFamily}.",
+                [
+                    'No command fixes this. Doria toolchains are published for Windows,',
+                    'macOS, and Linux.',
+                ],
             ),
         };
         $architecture = match (strtolower($machine)) {
@@ -36,7 +40,8 @@ final readonly class Platform
             default => throw new BatonError(
                 'B0204',
                 'Unsupported Host Architecture',
-                "Baton does not have a toolchain architecture name for {$machine}."
+                "Baton does not have a toolchain architecture name for {$machine}.",
+                ['No command fixes this. Doria toolchains are published for x86_64 and aarch64.'],
             ),
         };
 
