@@ -12,9 +12,9 @@ use Doria\Baton\Diagnostics\BatonError;
 /**
  * Resolves and validates `doriac` using the B5 discovery contract.
  *
- * Public mode never consults BATON_DORIAC or PATH. Those sources are available
- * only through the explicit development mode, preventing an unrelated compiler
- * installation from silently replacing the compiler shipped with Baton.
+ * Installed compiler sources always win. Callers may allow BATON_DORIAC and
+ * PATH as lower-priority development fallbacks without letting either replace
+ * the compiler shipped with Baton.
  */
 final class ToolchainLocator
 {
@@ -34,7 +34,7 @@ final class ToolchainLocator
      */
     public function __construct(
         private readonly ?string $override = null,
-        private readonly bool $developmentMode = false,
+        private readonly bool $allowDevelopmentFallbacks = false,
         ?string $batonExecutable = null,
         ?array $environment = null,
         private readonly ?Platform $host = null,
@@ -92,7 +92,7 @@ final class ToolchainLocator
             return $this->select($besideBaton, 'compiler beside Baton', $host);
         }
 
-        if ($this->developmentMode) {
+        if ($this->allowDevelopmentFallbacks) {
             $fromEnvironment = $this->environment['BATON_DORIAC'] ?? '';
             if (trim($fromEnvironment) !== '') {
                 return $this->select(
@@ -108,10 +108,9 @@ final class ToolchainLocator
             }
         }
 
-        $developmentHelp = $this->developmentMode
+        $developmentHelp = $this->allowDevelopmentFallbacks
             ? "No BATON_DORIAC override or doriac executable was found on the development PATH."
-            : "For source development, pass `--compiler <path>` or opt into\n"
-                . "`--development` before using BATON_DORIAC or PATH.";
+            : "This toolchain configuration does not allow BATON_DORIAC or PATH fallbacks.";
 
         // Two different readers reach this line. A user with an installed
         // toolchain needs to reinstall it; someone building the compiler needs
@@ -122,7 +121,7 @@ final class ToolchainLocator
             'Doria Compiler Not Found',
             "Baton could not find a compiler recorded in toolchain.json or beside:\n"
                 . "    {$this->batonExecutable}\n\n{$developmentHelp}",
-            $this->developmentMode
+            $this->allowDevelopmentFallbacks
                 ? [
                     'Point Baton at the compiler artifact you built, or put it on PATH:',
                 ]
@@ -130,7 +129,7 @@ final class ToolchainLocator
                     'Install a Doria toolchain, which ships Baton, doriac, doria-lsp, and',
                     'the private runtime together. To inspect what Baton can currently see:',
                 ],
-            $this->developmentMode
+            $this->allowDevelopmentFallbacks
                 ? ['baton run --compiler /absolute/path/to/doriac']
                 : ['baton doctor'],
         );

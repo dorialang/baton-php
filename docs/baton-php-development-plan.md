@@ -523,11 +523,14 @@ Baton should normally use the compiler bundled with the same distribution.
 1. Explicit `--compiler <path>` development override.
 2. Compiler recorded in the installed toolchain manifest.
 3. Compiler beside Baton in the installed toolchain.
-4. BATON_DORIAC development override.
-5. PATH lookup only when development mode is explicitly enabled.
+4. `BATON_DORIAC` development override.
+5. `PATH` lookup as the final bootstrap fallback.
 ```
 
 A random `doriac` on `PATH` must not silently override the bundled compiler.
+The PHP bootstrap enables the two development fallbacks automatically after
+checking every installed source. The later Doria-native Baton owns the final
+public distribution policy.
 
 ### Version Validation
 

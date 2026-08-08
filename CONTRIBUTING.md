@@ -56,13 +56,17 @@ php bin/baton doctor --compiler /absolute/path/to/doriac
 
 The selected compiler must report the same Doria toolchain CalVer and host target as Baton. An arbitrary sibling checkout is neither required nor inferred.
 
-For repeated local work, opt into development discovery explicitly:
+For repeated local work, the PHP bootstrap automatically uses
+`BATON_DORIAC` and then `PATH` after checking the explicit and installed
+toolchain sources:
 
 ```bash
-BATON_DORIAC=/absolute/path/to/doriac php bin/baton check --development
+BATON_DORIAC=/absolute/path/to/doriac php bin/baton check
+php bin/baton run
 ```
 
-With `--development`, Baton may use `BATON_DORIAC` and then `PATH`. Without that flag, those sources cannot replace the compiler shipped in a toolchain.
+Installed toolchain metadata and a compiler beside Baton still take precedence.
+The later Doria-native Baton owns the final public distribution policy.
 
 ## Design and implementation rules
 

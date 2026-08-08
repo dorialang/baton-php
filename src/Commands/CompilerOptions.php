@@ -26,7 +26,7 @@ final class CompilerOptions
                 'development',
                 null,
                 InputOption::VALUE_NONE,
-                'Allow developer-only BATON_DORIAC and PATH compiler discovery'
+                'Retained for bootstrap compatibility; development discovery is automatic'
             );
     }
 
@@ -37,7 +37,7 @@ final class CompilerOptions
 
         return (new ToolchainLocator(
             $compilerOverride,
-            (bool) $input->getOption('development'),
+            true,
         ))->locate();
     }
 }
