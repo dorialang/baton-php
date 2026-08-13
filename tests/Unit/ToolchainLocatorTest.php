@@ -70,7 +70,7 @@ final class ToolchainLocatorTest extends TestCase
             $this->identityProbe(),
         ))->locate();
 
-        self::assertSame($this->nativePath($compiler), $selection->compilerPath);
+        $this->assertSamePath($compiler, $selection->compilerPath);
         self::assertSame('toolchain.json', $selection->source);
         self::assertSame('verified', $selection->manifestStatus());
         self::assertSame('verified', $selection->hashStatus());
@@ -94,7 +94,7 @@ final class ToolchainLocatorTest extends TestCase
             $this->identityProbe(),
         ))->locate();
 
-        self::assertSame($this->nativePath($beside), $selection->compilerPath);
+        $this->assertSamePath($beside, $selection->compilerPath);
         self::assertSame('compiler beside Baton', $selection->source);
     }
 
@@ -157,7 +157,7 @@ final class ToolchainLocatorTest extends TestCase
             $this->identityProbe(),
         ))->locate();
 
-        self::assertSame($this->nativePath($onPath), $selection->compilerPath);
+        $this->assertSamePath($onPath, $selection->compilerPath);
         self::assertSame('development PATH', $selection->source);
     }
 

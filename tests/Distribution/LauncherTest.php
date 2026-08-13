@@ -46,14 +46,16 @@ final class LauncherTest extends TestCase
             true,
             flags: JSON_THROW_ON_ERROR,
         );
-        $expectedBinary = PHP_OS_FAMILY === 'Windows'
-            ? $fixture['runtime']
-            : realpath($fixture['runtime']);
-        self::assertIsString($expectedBinary);
-        self::assertSame(
-            $this->nativePath($expectedBinary),
-            $this->nativePath($result['binary']),
-        );
+        if (PHP_OS_FAMILY === 'Windows') {
+            self::assertStringEndsWith(
+                '\\libexec\\doria\\php\\bin\\php.exe',
+                $this->nativePath($result['binary']),
+            );
+        } else {
+            $expectedBinary = realpath($fixture['runtime']);
+            self::assertIsString($expectedBinary);
+            $this->assertSamePath($expectedBinary, $result['binary']);
+        }
         self::assertFalse($result['ini']);
         self::assertFalse($result['scannedIni']);
         self::assertSame(['one', 'two words', 'Doria-Ω'], $result['arguments']);

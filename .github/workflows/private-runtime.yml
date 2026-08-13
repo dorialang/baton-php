@@ -46,7 +46,7 @@ jobs:
             runner: macos-15
             executable: build/private-runtime/bin/php
           - target: windows-x86_64
-            runner: windows-2025
+            runner: windows-2022
             executable: build/private-runtime/bin/php.exe
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
@@ -61,6 +61,10 @@ jobs:
           php-version: '8.4'
           tools: composer:v2
           coverage: none
+
+      - name: Install Linux runtime build dependencies
+        if: startsWith(matrix.target, 'linux-')
+        run: sudo apt-get update && sudo apt-get install --yes --no-install-recommends musl
 
       - name: Install contributor dependencies
         run: composer install --prefer-dist --no-interaction --no-progress

@@ -106,7 +106,6 @@ run([
     '--build-cli',
     '--with-config-file-path=/__doria_private_runtime__',
     '--with-config-file-scan-dir=/__doria_private_runtime__',
-    '--with-clean',
     '--no-interaction',
 ], $workDirectory);
 
