@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Doria\Baton\Compiler;
 
 use Doria\Baton\Diagnostics\BatonError;
+use Symfony\Component\Process\Exception\ProcessTimedOutException;
+use Symfony\Component\Process\Exception\RuntimeException as ProcessRuntimeException;
+use Symfony\Component\Process\Process;
 
 /**
  * The single gateway for invoking `doriac` (plan B4).
@@ -57,43 +60,25 @@ final class CompilerAdapter
         ?float $timeoutSeconds = null,
     ): CompilerResult
     {
-        $descriptors = [
-            0 => ['file', PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null', 'r'],
-            1 => ['pipe', 'w'],
-            2 => ['pipe', 'w'],
-        ];
-        $process = $this->open($args, $descriptors, $workingDirectory, $pipes);
-        stream_set_blocking($pipes[1], false);
-        stream_set_blocking($pipes[2], false);
-        $stdout = '';
-        $stderr = '';
-        $startedAt = hrtime(true);
-        do {
-            $stdout .= stream_get_contents($pipes[1]) ?: '';
-            $stderr .= stream_get_contents($pipes[2]) ?: '';
-            $status = proc_get_status($process);
-            if (!$status['running']) {
-                break;
-            }
-            if (
-                $timeoutSeconds !== null
-                && (hrtime(true) - $startedAt) / 1_000_000_000 >= $timeoutSeconds
-            ) {
-                proc_terminate($process);
-                $this->closePipes($pipes);
-                proc_close($process);
-                throw $this->timeoutError($timeoutSeconds);
-            }
-            usleep(10_000);
-        } while (true);
+        $process = new Process(
+            [$this->doriacPath, ...$args],
+            $workingDirectory,
+            timeout: $timeoutSeconds,
+        );
 
-        $stdout .= stream_get_contents($pipes[1]) ?: '';
-        $stderr .= stream_get_contents($pipes[2]) ?: '';
-        $this->closePipes($pipes);
-        $closedExitCode = proc_close($process);
-        $exitCode = $status['exitcode'] >= 0 ? $status['exitcode'] : $closedExitCode;
+        try {
+            $exitCode = $process->run();
+        } catch (ProcessTimedOutException) {
+            throw $this->timeoutError($timeoutSeconds ?? 0.0);
+        } catch (ProcessRuntimeException) {
+            throw $this->startError();
+        }
 
-        return new CompilerResult($exitCode, $stdout, $stderr);
+        return new CompilerResult(
+            $exitCode,
+            $process->getOutput(),
+            $process->getErrorOutput(),
+        );
     }
 
     private function timeoutError(float $timeoutSeconds): BatonError
@@ -122,16 +107,21 @@ final class CompilerAdapter
 
         $process = proc_open($command, $descriptors, $pipes, $workingDirectory);
         if (!is_resource($process)) {
-            throw new BatonError(
-                'B0203',
-                'Doria Compiler Could Not Be Started',
-                "Failed to launch the compiler at:\n    {$this->doriacPath}",
-                ['Confirm the selected compiler still exists and is executable:'],
-                ['baton doctor'],
-            );
+            throw $this->startError();
         }
 
         return $process;
+    }
+
+    private function startError(): BatonError
+    {
+        return new BatonError(
+            'B0203',
+            'Doria Compiler Could Not Be Started',
+            "Failed to launch the compiler at:\n    {$this->doriacPath}",
+            ['Confirm the selected compiler still exists and is executable:'],
+            ['baton doctor'],
+        );
     }
 
     /** @param array<int, resource> $pipes */

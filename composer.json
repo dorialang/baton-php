@@ -24,7 +24,7 @@
     },
     "scripts": {
         "test": "phpunit --configuration phpunit.xml",
-        "analyse": "phpstan analyse src tests --level=max --no-progress --debug",
+        "analyse": "@php -d memory_limit=512M vendor/bin/phpstan analyse src tests --level=max --no-progress --debug",
         "lint:packaging": [
             "php -l packaging/build-phar.php",
             "php -l packaging/php-runtime/build.php"

@@ -15,8 +15,8 @@ final class BuildCommandTest extends TestCase
         $compiler = $this->writeFakeCompiler($root);
         $target = Platform::host()->target();
         $executable = PHP_OS_FAMILY === 'Windows' ? 'build-fixture.exe' : 'build-fixture';
-        $development = "{$root}/build/{$target}/development/{$executable}";
-        $release = "{$root}/build/{$target}/release/{$executable}";
+        $development = $this->nativePath("{$root}/build/{$target}/development/{$executable}");
+        $release = $this->nativePath("{$root}/build/{$target}/release/{$executable}");
 
         $developmentResult = $this->runBaton(
             ['build', '--compiler', $compiler],

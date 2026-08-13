@@ -46,7 +46,14 @@ final class LauncherTest extends TestCase
             true,
             flags: JSON_THROW_ON_ERROR,
         );
-        self::assertSame(realpath($fixture['runtime']), realpath($result['binary']));
+        $expectedBinary = PHP_OS_FAMILY === 'Windows'
+            ? $fixture['runtime']
+            : realpath($fixture['runtime']);
+        self::assertIsString($expectedBinary);
+        self::assertSame(
+            $this->nativePath($expectedBinary),
+            $this->nativePath($result['binary']),
+        );
         self::assertFalse($result['ini']);
         self::assertFalse($result['scannedIni']);
         self::assertSame(['one', 'two words', 'Doria-Ω'], $result['arguments']);
@@ -127,10 +134,9 @@ final class LauncherTest extends TestCase
 
         $runtime = $runtimeDirectory . '/php' . ($windows ? '.exe' : '');
         if ($installRuntime) {
-            self::assertTrue(copy(PHP_BINARY, $runtime));
-            if (!$windows) {
-                self::assertTrue(chmod($runtime, 0o755));
-            }
+            self::assertTrue($windows
+                ? copy(PHP_BINARY, $runtime)
+                : symlink(PHP_BINARY, $runtime));
         }
 
         $application = $applicationDirectory . '/baton.phar';

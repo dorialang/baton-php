@@ -29,7 +29,7 @@ copyDirectory("{$repositoryRoot}/vendor", "{$stageDirectory}/vendor");
 
 $composer = getenv('COMPOSER_BINARY');
 $composer = is_string($composer) && $composer !== '' ? $composer : 'composer';
-$composerCommand = str_ends_with(strtolower($composer), '.phar')
+$composerCommand = is_file($composer)
     ? [PHP_BINARY, $composer]
     : [$composer];
 run([

@@ -53,6 +53,11 @@ abstract class TestCase extends PHPUnitTestCase
         return PHP_OS_FAMILY === 'Windows' ? 'doria-lsp.exe' : 'doria-lsp';
     }
 
+    protected function nativePath(string $path): string
+    {
+        return str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $path);
+    }
+
     /**
      * @param list<string> $arguments
      * @param array<string, string>|null $environment

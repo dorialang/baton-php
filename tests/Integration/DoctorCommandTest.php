@@ -71,7 +71,10 @@ TOML,
             'PASS  build location',
             $result['stdout'],
         );
-        self::assertStringContainsString($root . '/build', $result['stdout']);
+        self::assertStringContainsString(
+            $this->nativePath($root . '/build'),
+            $result['stdout'],
+        );
     }
 
     public function testDoctorFailsWhenTheCompilerCannotBeStarted(): void

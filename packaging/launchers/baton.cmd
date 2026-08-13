@@ -1,7 +1,7 @@
 @echo off
 setlocal
 
-set "TOOLCHAIN_ROOT=%~dp0.."
+for %%I in ("%~dp0..") do set "TOOLCHAIN_ROOT=%%~fI"
 set "RUNTIME=%TOOLCHAIN_ROOT%\libexec\doria\php\bin\php.exe"
 set "APPLICATION=%TOOLCHAIN_ROOT%\libexec\doria\baton.phar"
 

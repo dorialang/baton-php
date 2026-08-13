@@ -48,13 +48,13 @@
             "runtime": true
         },
         "micro": {
-            "url": "https://codeload.github.com/static-php/phpmicro/tar.gz/fb6d497b6f4cf138ee3851a30c905d64b7b19aed",
+            "url": "https://github.com/static-php/phpmicro/archive/fb6d497b6f4cf138ee3851a30c905d64b7b19aed.tar.gz",
             "sha256": "810548718d9e54e8003f569b393399bdb4adf3a6bc59ef9af55b6f6931b34215",
             "runtime": false
         },
         "frankenphp": {
-            "url": "https://api.github.com/repos/php/frankenphp/tarball/v1.12.6",
-            "sha256": "832b4ab4fff0c53d18d18c4a190ee6afb8cb6f35988d56adb70746ffaebdf3d0",
+            "url": "https://github.com/php/frankenphp/archive/refs/tags/v1.12.6.tar.gz",
+            "sha256": "e29359a516049d337b8dee0ae2573caff6c39fa73537e3a68a065deaf98f372a",
             "runtime": false
         },
         "php-src": {

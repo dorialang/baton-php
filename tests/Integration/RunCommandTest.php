@@ -39,11 +39,11 @@ PHP;
             "program input\n",
         );
 
-        $artifact = $root
+        $artifact = $this->nativePath($root
             . '/build/'
             . Platform::host()->target()
             . '/release/'
-            . (PHP_OS_FAMILY === 'Windows' ? 'run-fixture.exe' : 'run-fixture');
+            . (PHP_OS_FAMILY === 'Windows' ? 'run-fixture.exe' : 'run-fixture'));
         self::assertSame(23, $result['exitCode']);
         self::assertSame(
             "[\"--looks-like-an-option\",\"two words\",\"Zażółć\"]\n"
@@ -69,11 +69,11 @@ PHP;
     {
         $root = $this->project();
         $compiler = $this->writeFakeCompiler($root);
-        $artifact = $root
+        $artifact = $this->nativePath($root
             . '/build/'
             . Platform::host()->target()
             . '/development/'
-            . (PHP_OS_FAMILY === 'Windows' ? 'run-fixture.exe' : 'run-fixture');
+            . (PHP_OS_FAMILY === 'Windows' ? 'run-fixture.exe' : 'run-fixture'));
 
         $result = $this->runBaton(
             ['run', '-v', '--compiler', $compiler, '--', '-r', 'echo "program output\n";'],
@@ -189,12 +189,9 @@ if (!is_int($outputIndex) || !isset($argv[$outputIndex + 1])) {
     exit(9);
 }
 $output = $argv[$outputIndex + 1];
-if (!copy(PHP_BINARY, $output)) {
+if (!(PHP_OS_FAMILY === 'Windows' ? copy(PHP_BINARY, $output) : symlink(PHP_BINARY, $output))) {
     fwrite(STDERR, "failed to create fake program\n");
     exit(10);
-}
-if (PHP_OS_FAMILY !== 'Windows') {
-    chmod($output, 0755);
 }
 echo $output . "\n";
 PHP;

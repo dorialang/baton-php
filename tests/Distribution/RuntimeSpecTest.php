@@ -57,6 +57,10 @@ final class RuntimeSpecTest extends TestCase
         );
         foreach ($spec['sources'] as $source) {
             self::assertPinnedUrlAndHash($source['url'], $source['sha256']);
+            self::assertMatchesRegularExpression(
+                '/\.(?:tar\.(?:gz|xz)|tgz|zip)$/',
+                parse_url($source['url'], PHP_URL_PATH) ?: '',
+            );
         }
         self::assertTrue($spec['sources']['zlib']['runtime']);
         self::assertFalse($spec['sources']['micro']['runtime']);
