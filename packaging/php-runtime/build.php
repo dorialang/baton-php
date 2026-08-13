@@ -30,6 +30,8 @@ $extensions = $spec['extensions']['common'];
 if (!str_starts_with($target, 'windows-')) {
     $extensions = [...$extensions, ...$spec['extensions']['unix']];
 }
+$sources = sourcesForTarget($spec['sources'], $target);
+$asset = $spec['builder']['assets'][$target];
 
 $outputDirectory = absolutePath(
     $options['output'] ?? "{$repositoryRoot}/build/php-runtime/{$target}",
@@ -44,7 +46,9 @@ $plan = [
     'target' => $target,
     'phpVersion' => $spec['php']['version'],
     'builder' => $spec['builder']['name'] . ' ' . $spec['builder']['version'],
+    'builderTarget' => $asset['spcTarget'],
     'extensions' => $extensions,
+    'sources' => array_keys($sources),
     'output' => $outputDirectory,
     'work' => $workDirectory,
 ];
@@ -64,8 +68,10 @@ if ($target !== $hostTarget) {
 makeDirectory($workDirectory);
 guardWorkDirectory($workDirectory);
 prepareOutputDirectory($outputDirectory);
+if (!putenv("SPC_TARGET={$asset['spcTarget']}")) {
+    fail('Could not configure the runtime builder target.');
+}
 
-$asset = $spec['builder']['assets'][$target];
 $assetName = basename(parse_url($asset['url'], PHP_URL_PATH));
 $assetPath = "{$workDirectory}/{$assetName}";
 downloadVerified($asset['url'], $assetPath, $asset['sha256']);
@@ -73,7 +79,7 @@ downloadVerified($asset['url'], $assetPath, $asset['sha256']);
 $builderPath = installBuilder($assetPath, $workDirectory, str_starts_with($target, 'windows-'));
 $extensionArgument = implode(',', $extensions);
 $sourceArguments = [];
-foreach ($spec['sources'] as $name => $source) {
+foreach ($sources as $name => $source) {
     $sourceArguments[] = "--custom-url={$name}:{$source['url']}";
 }
 if (isset($options['prepare'])) {
@@ -95,7 +101,7 @@ run([
     '--no-interaction',
 ], $workDirectory);
 
-foreach ($spec['sources'] as $name => $source) {
+foreach ($sources as $name => $source) {
     verifyDownloadedSource($workDirectory . '/downloads', $name, $source['sha256']);
 }
 
@@ -144,9 +150,10 @@ $runtimeManifest = [
     'builder' => [
         'name' => $spec['builder']['name'],
         'version' => $spec['builder']['version'],
+        'target' => $asset['spcTarget'],
         'assetSha256' => $asset['sha256'],
     ],
-    'sources' => $spec['sources'],
+    'sources' => $sources,
     'extensions' => $extensions,
     'capabilities' => $spec['capabilities'],
     'licences' => $licences,
@@ -168,6 +175,19 @@ if (!isset($options['keep-work'])) {
 
 fwrite(STDOUT, "Private PHP runtime: {$runtimeBinary}" . PHP_EOL);
 fwrite(STDOUT, "Runtime manifest: {$manifestPath}" . PHP_EOL);
+
+/**
+ * @param array<string, array{url: string, sha256: string, runtime: bool, targets?: list<string>}> $sources
+ * @return array<string, array{url: string, sha256: string, runtime: bool, targets?: list<string>}>
+ */
+function sourcesForTarget(array $sources, string $target): array
+{
+    return array_filter(
+        $sources,
+        static fn (array $source): bool => !isset($source['targets'])
+            || in_array($target, $source['targets'], true),
+    );
+}
 
 /** @param list<string> $arguments
  *  @return array<string, string|true>

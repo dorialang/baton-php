@@ -19,10 +19,10 @@ final class RuntimeSpecTest extends TestCase
          *     builder: array{
          *         name: string,
          *         version: string,
-         *         assets: array<string, array{url: string, sha256: string}>
+         *         assets: array<string, array{url: string, sha256: string, spcTarget: string}>
          *     },
          *     extensions: array{common: list<string>, unix: list<string>},
-         *     sources: array<string, array{url: string, sha256: string, runtime: bool}>,
+         *     sources: array<string, array{url: string, sha256: string, runtime: bool, targets?: list<string>}>,
          *     capabilities: list<string>
          * } $spec
          */
@@ -52,7 +52,17 @@ final class RuntimeSpecTest extends TestCase
             self::assertPinnedUrlAndHash($asset['url'], $asset['sha256']);
         }
         self::assertSame(
-            ['zlib', 'micro', 'frankenphp', 'php-src', 'libiconv'],
+            [
+                'native-native-musl',
+                'native-native-musl',
+                'native-macos',
+                'native-macos',
+                'native-windows',
+            ],
+            array_column($spec['builder']['assets'], 'spcTarget'),
+        );
+        self::assertSame(
+            ['zlib', 'micro', 'frankenphp', 'php-src', 'libiconv', 'libiconv-win'],
             array_keys($spec['sources']),
         );
         foreach ($spec['sources'] as $source) {
@@ -67,6 +77,26 @@ final class RuntimeSpecTest extends TestCase
         self::assertFalse($spec['sources']['frankenphp']['runtime']);
         self::assertTrue($spec['sources']['php-src']['runtime']);
         self::assertTrue($spec['sources']['libiconv']['runtime']);
+        self::assertTrue($spec['sources']['libiconv-win']['runtime']);
+        self::assertSame(
+            ['linux-x86_64', 'linux-aarch64', 'macos-x86_64', 'macos-aarch64'],
+            $spec['sources']['libiconv']['targets'] ?? null,
+        );
+        self::assertSame(
+            ['windows-x86_64'],
+            $spec['sources']['libiconv-win']['targets'] ?? null,
+        );
+    }
+
+    public function testRuntimePlansSelectPlatformSpecificSources(): void
+    {
+        $unixPlan = $this->runtimePlan('linux-x86_64');
+        self::assertContains('libiconv', $unixPlan['sources']);
+        self::assertNotContains('libiconv-win', $unixPlan['sources']);
+
+        $windowsPlan = $this->runtimePlan('windows-x86_64');
+        self::assertNotContains('libiconv', $windowsPlan['sources']);
+        self::assertContains('libiconv-win', $windowsPlan['sources']);
     }
 
     public function testRuntimeBuilderRefusesToReplaceAnUnrecognizedOutputDirectory(): void
@@ -101,5 +131,21 @@ final class RuntimeSpecTest extends TestCase
         self::assertStringNotContainsString('latest', strtolower($url));
         self::assertStringNotContainsString('nightly', strtolower($url));
         self::assertMatchesRegularExpression('/^[a-f0-9]{64}$/', $sha256);
+    }
+
+    /** @return array{sources: list<string>} */
+    private function runtimePlan(string $target): array
+    {
+        $process = new Process([
+            PHP_BINARY,
+            dirname(__DIR__, 2) . '/packaging/php-runtime/build.php',
+            '--print-plan',
+            '--target',
+            $target,
+        ]);
+        self::assertSame(0, $process->run(), $process->getErrorOutput());
+
+        /** @var array{sources: list<string>} */
+        return json_decode($process->getOutput(), true, flags: JSON_THROW_ON_ERROR);
     }
 }
