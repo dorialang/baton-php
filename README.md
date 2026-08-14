@@ -79,6 +79,18 @@ Each profile directory also contains `build.json`, recording the package, packag
 
 See [Project manifest](docs/project-manifest.md) for the field contract and path rules.
 
+## Package-system contract
+
+This PHP bootstrap currently executes manifest schema 1 only: one binary entry,
+no autoload, no dependencies, no lockfile, and no workspace. The accepted Phase
+F target introduces schema 2 with compile-time `autoload`, package dependencies,
+deterministic JSON `Baton.lock`, workspaces, explicit processors, a
+content-addressed cache, and offline builds. Those commands and fields are not
+accepted by the bootstrap parser yet.
+
+See [Phase F package and dependency model](docs/phase-f-package-and-dependency-model.md)
+for the complete target contract and its current-state boundary.
+
 ## Toolchain integrity
 
 Baton prefers the compiler recorded in the installed `toolchain.json`, then a compiler shipped beside Baton. It does not silently substitute an unrelated `doriac` from `PATH`.
@@ -105,6 +117,7 @@ Read [Architecture](docs/architecture.md) for the component and ownership model.
 ## Documentation
 
 - [Project manifest](docs/project-manifest.md)
+- [Phase F package and dependency model](docs/phase-f-package-and-dependency-model.md)
 - [Toolchain discovery and validation](docs/toolchain.md)
 - [Private Baton runtime](docs/runtime.md)
 - [Architecture](docs/architecture.md)

@@ -29,12 +29,14 @@
             "php -l packaging/build-phar.php",
             "php -l packaging/php-runtime/build.php"
         ],
+        "check:phase-f": "php scripts/check_phase_f_package_authority.php",
         "build:phar": "php -d phar.readonly=0 packaging/build-phar.php",
         "runtime:plan": "php packaging/php-runtime/build.php --print-plan",
         "check": [
             "@test",
             "@analyse",
-            "@lint:packaging"
+            "@lint:packaging",
+            "@check:phase-f"
         ]
     },
     "authors": [

@@ -85,3 +85,15 @@ Development and release builds use separate directories and never overwrite one 
 `baton run` builds the selected profile into this same layout and executes the newly produced artifact. It never falls back to a previous build after compiler failure.
 
 `toolchain.json` never belongs in a Doria project. It is installed-toolchain metadata, not `Baton.toml` and not a package lockfile.
+
+## Accepted schema 2 target
+
+Schema 2 is the accepted Phase F package format. It adds package identities in
+`vendor/package` form, an edition, compile-time `[autoload.namespaces]` and
+`[autoload-dev.namespaces]` mappings, normal and development dependencies, and
+explicit processors. It is documented in [Phase F package and dependency
+model](phase-f-package-and-dependency-model.md).
+
+The current bootstrap does not parse schema 2. Schema 1 remains one explicit
+binary entry with no autoload, dependency, lockfile, or workspace behavior; it
+will not be reinterpreted silently.

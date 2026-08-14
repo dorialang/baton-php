@@ -35,3 +35,18 @@ Baton is designed around these boundaries:
 - diagnostic commands must not expose secrets.
 
 Changes that weaken one of these boundaries require explicit security review and regression coverage.
+
+## Accepted package-system threat model
+
+The future package resolver preserves the same inert-data boundary. Dependency
+and processor sources are explicit and exactly locked; remote lock entries keep
+canonical source URLs but never credentials, tokens, or secret query
+parameters. Conflicting sources for one package identity are diagnosed.
+Arbitrary archive URLs and implicit build scripts are rejected. Processors are
+explicit, source-locked, visible in build output, and write beneath the build
+directory without modifying handwritten source by default.
+
+Offline mode never reaches the network or substitutes another version. The
+global dependency cache is content-addressed by exact source identity and
+integrity facts. These are accepted target requirements, not claims that the
+schema 1 bootstrap currently resolves or executes dependencies.

@@ -1231,14 +1231,15 @@ Test with:
 
 ## 22. Stage 31 Integration
 
-After multi-file compilation and namespaces land, Baton may add:
+Stage 31 follows Decisions 0117 and 0118 in two compiler-facing slices. After
+its multi-file and namespace work lands, Baton may add:
 
 * Source-root discovery.
 * Multi-file compiler invocation.
 * Library project templates.
 * Workspace-aware language-server roots.
 * Compiler-supported package compilation roots.
-* Path dependency support where permitted by the accepted resolver design.
+* Versioned JSON build-plan construction for already resolved package inputs.
 
 Baton must not:
 
@@ -1246,6 +1247,7 @@ Baton must not:
 * Parse imports using PHP.
 * Reimplement the compiler’s module graph.
 * Guess compilation units through regular-expression scanning.
+* Parse dependency sources or lockfiles as part of Stage 31.
 
 The compiler must expose the project-level compilation services Baton needs.
 
@@ -1271,22 +1273,34 @@ Attribute validation and interpretation remain compiler-owned.
 
 Stage 33 completes the capabilities deliberately omitted from the bootstrap.
 
+Decision 0118 divides the work into three slices. Slice 1 implements schema 2,
+schema 1 compatibility, compile-time `autoload`, source scopes, targets, and
+deterministic single-package build plans. Slice 2 implements path and Git
+resolution, SemVer validation, one-version conflict reporting, deterministic
+JSON `Baton.lock`, dependency commands, the global content-addressed cache, and
+offline resolution. Slice 3 implements workspaces, development dependencies,
+graph commands, incremental inventory, `baton test`, explicit processor
+orchestration, and Phase F closure.
+
 ### Add
 
 ```text
 baton test
 path dependencies
+git dependencies
 deterministic dependency resolution
 Baton.lock
 binary project templates
 library project templates
 official test reporting
 workspace-aware editor integration
+compile-time autoload
+offline builds
 ```
 
 ### Decision Work
 
-The official Baton decision settles:
+Decisions 0117 and 0118 settle:
 
 * Full `Baton.toml` schema.
 * `Baton.lock` encoding.
@@ -1302,6 +1316,11 @@ The official Baton decision settles:
 * Offline resolution behaviour.
 * Conflict diagnostics.
 
+The remaining public spellings for additional target tables, the local-only
+package marker, optional features, target predicates, processor permissions,
+and workspace package selection are bounded deferrals. They do not reopen the
+accepted architecture.
+
 The resolver must leave room for:
 
 * Target-specific dependencies.
@@ -1312,6 +1331,10 @@ The resolver must leave room for:
 * Future registries.
 
 It must not assume every dependency is pure, target-independent Doria source.
+
+The current PHP bootstrap remains schema 1 until these slices land. It does not
+register future dependency commands, change project templates, generate
+`Baton.lock`, or perform network resolution early.
 
 ### Stage 33 Acceptance Criterion
 

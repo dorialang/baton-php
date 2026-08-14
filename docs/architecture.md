@@ -56,6 +56,14 @@ Commands such as `doctor` that do not require a project skip project discovery. 
 
 The compiler boundary is narrow by design. Machine-readable responses must carry an explicit schema, and incompatible schema or toolchain versions fail before a project command proceeds.
 
+The accepted package-system boundary keeps that separation at project scale.
+Baton discovers source through compile-time `autoload`, resolves dependencies
+and workspaces, and emits a versioned JSON build plan. `doriac` indexes every
+declared source and owns names, types, package visibility, MIR, and code
+generation. Baton never parses Doria declarations; `doriac` never parses
+`Baton.toml`, resolves package versions, or fetches sources. The build plan and
+versioned build receipt are the incremental boundary.
+
 ## Repository independence
 
 The Baton repository builds and tests without a compiler repository checkout. Integration tests consume an explicit compiler artifact, a pinned released component, or a CI artifact identified by immutable metadata.
@@ -103,3 +111,7 @@ The PHP implementation is a bootstrap, not part of the public project contract. 
 - compiler and toolchain manifest schemas.
 
 Project users must not need to migrate because Baton's implementation language changes.
+
+The accepted target architecture is detailed in [Phase F package and dependency
+model](phase-f-package-and-dependency-model.md). It remains separate from the
+schema 1 bootstrap implementation until its scheduled delivery.
