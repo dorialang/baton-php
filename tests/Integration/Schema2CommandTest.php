@@ -24,7 +24,7 @@ final class Schema2CommandTest extends TestCase
         self::assertFileExists($directory . '/build-plan.json');
         self::assertFileDoesNotExist($directory . '/build.json');
         self::assertSame(
-            ['check', '--build-plan', $directory . '/build-plan.json'],
+            ['check', '--build-plan', $this->nativePath($directory . '/build-plan.json')],
             $this->compilerArguments($root),
         );
     }
@@ -67,7 +67,7 @@ final class Schema2CommandTest extends TestCase
         self::assertSame(0, $result['exitCode'], $result['stderr']);
         $directory = $this->targetDirectory($root, 'development', 'blog');
         self::assertSame(
-            ['check', '--build-plan', $directory . '/build-plan.json'],
+            ['check', '--build-plan', $this->nativePath($directory . '/build-plan.json')],
             $this->compilerArguments($root),
         );
         $receipt = json_decode((string) file_get_contents($directory . '/build.json'), true, flags: JSON_THROW_ON_ERROR);
