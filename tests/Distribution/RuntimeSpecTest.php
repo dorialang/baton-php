@@ -78,6 +78,10 @@ final class RuntimeSpecTest extends TestCase
         self::assertTrue($spec['sources']['php-src']['runtime']);
         self::assertTrue($spec['sources']['libiconv']['runtime']);
         self::assertTrue($spec['sources']['libiconv-win']['runtime']);
+        self::assertStringStartsWith(
+            'https://mirrors.kernel.org/gnu/',
+            $spec['sources']['libiconv']['url'],
+        );
         self::assertSame(
             ['linux-x86_64', 'linux-aarch64', 'macos-x86_64', 'macos-aarch64'],
             $spec['sources']['libiconv']['targets'] ?? null,
