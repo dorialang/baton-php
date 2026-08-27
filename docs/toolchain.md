@@ -14,14 +14,21 @@ Baton evaluates compiler sources in this order:
 
 The disposable PHP bootstrap automatically enables steps 4 and 5 so ordinary
 `baton check`, `baton build`, and `baton run` commands exercise the intended
-workflow without development-only flags. The later Doria-native Baton owns the
-final public distribution policy.
+workflow without development-only flags. The Pre-Stage-45 Doria-native Baton
+owns final public distribution policy after the mandatory parity-gated cutover.
 
-## Baton runtime discovery
+## Bootstrap Baton runtime discovery
 
 The public `baton` launcher has a stricter, fixed discovery rule: it resolves `libexec/doria/php/bin/php` (or `php.exe`) relative to its own installed toolchain root and starts `libexec/doria/baton.phar` with `-n`. It never consults `PATH`, `PHPRC`, `PHP_INI_SCAN_DIR`, a Composer installation, or project files to select or configure PHP.
 
 Unlike the compiler development overrides below, there is no environment-variable or command-line override for the public Baton runtime. Source-checkout development continues to use `php bin/baton`; installed toolchains use only the bundled runtime. See [Private Baton runtime](runtime.md) for the build and isolation contract.
+
+This runtime-discovery contract applies only to PHP-bootstrap prereleases. At
+the Pre-Stage-45 cutover, installed `bin/baton` becomes the native Doria
+executable and the PHAR, Composer payload, PHP launcher, and private runtime are
+removed. Compiler discovery and verification remain behaviorally compatible
+through the shared transition fixtures. The unsuffixed `2026.03.1` release
+cannot use the bootstrap runtime layout.
 
 Examples for source development:
 

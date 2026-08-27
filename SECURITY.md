@@ -30,7 +30,9 @@ Baton is designed around these boundaries:
 - installed component identities and SHA-256 hashes are verified;
 - project entry paths must remain inside the project root;
 - project manifests are data and do not execute code;
-- public distributions use an isolated private PHP runtime without user configuration or system extensions;
+- PHP-bootstrap prereleases use an isolated private PHP runtime without user
+  configuration or system extensions; production distributions remove that
+  runtime at the mandatory Doria-native cutover;
 - Baton does not execute PHP supplied by a Doria project;
 - diagnostic commands must not expose secrets.
 

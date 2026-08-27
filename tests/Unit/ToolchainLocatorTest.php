@@ -183,9 +183,35 @@ final class ToolchainLocatorTest extends TestCase
             },
         );
 
-        $this->expectException(BatonError::class);
-        $this->expectExceptionMessage('Doria Source Launcher Is Not A Toolchain Component');
-        $locator->locate();
+        try {
+            $locator->locate();
+            self::fail('The source launcher must be rejected.');
+        } catch (BatonError $error) {
+            self::assertSame('B0201', $error->diagnosticCode);
+            self::assertSame('Doria Source Launcher Is Not A Toolchain Component', $error->heading);
+            self::assertStringContainsString(
+                '`cargo build --release -p doriac` creates target/release/doriac',
+                $error->body,
+            );
+            self::assertStringContainsString(
+                'scripts/refresh_development_toolchain.php',
+                implode("\n", $error->help),
+            );
+            self::assertStringContainsString(
+                '--language-server /absolute/path/to/doria-language-server',
+                implode("\n", $error->help),
+            );
+            self::assertStringContainsString(
+                'cargo install --locked --force --path crates/doriac',
+                implode("\n", $error->help),
+            );
+            self::assertStringContainsString('remove or repoint', implode("\n", $error->help));
+            self::assertSame(['baton doctor'], $error->run);
+            self::assertStringNotContainsString(
+                'baton run --compiler',
+                $error->render(),
+            );
+        }
     }
 
     public function testManifestHashMismatchIsRejectedBeforeCompilerExecution(): void

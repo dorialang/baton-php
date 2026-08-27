@@ -106,6 +106,12 @@ dorialang/baton
 
 That future repository will be a **separate project with a clean history**, designed once Baton is rewritten in Doria itself. It will not inherit PHP-era implementation constraints or mixed-language history.
 
+Decision 0124 makes that rewrite and cutover binding: Stage 33 first completes
+and freezes the exercised product contract in this disposable repository; a
+mandatory Pre-Stage-45 transition then parity-ports it into `dorialang/baton`,
+transfers production release assembly, removes the PHP payload from public
+archives, and blocks the unsuffixed `2026.03.1` release until completion.
+
 This separation is deliberate.
 
 Baton maintainers should not need write access to the compiler repository merely to update project templates, CLI behaviour, packaging, or dependency-management features.
@@ -120,9 +126,15 @@ This work should be recorded as:
 
 > **Baton Bootstrap and Toolchain Distribution Track**
 
-It is not Stage 33 and does not satisfy Stage 33’s acceptance criteria.
+The early bootstrap milestones are not Stage 33 and do not satisfy Stage 33's
+acceptance criteria. The same disposable repository later owns the three Stage
+33 UX-contract slices under Decision 0124; completing them still does not
+satisfy the Doria-native transition.
 
-The complete Baton MVP remains scheduled after the compiler has the required multi-file, namespace, attribute, and testing foundations.
+The complete Baton product contract remains scheduled after the compiler has
+the required multi-file, namespace, attribute, and testing foundations. Its
+permanent Doria implementation remains separately scheduled after the
+filesystem, process, native-library, and network foundations.
 
 The early bootstrap may begin sooner because it:
 
@@ -148,13 +160,13 @@ Baton
 
 ---
 
-## 4. Required End-to-End Plan Amendment
+## 4. Accepted End-to-End Plan Amendment
 
-Add a short amendment to the end-to-end plan:
+Decision 0124 and the end-to-end plan now record:
 
-> A PHP bootstrap implementation of Baton may be developed before Stage 33 as a separate non-semantic tooling and distribution project. Baton is maintained in its own repository (`dorialang/baton-php`). It may wrap compiler capabilities that have already landed and establish installation, command dispatch, project discovery, minimal manifest handling, and toolchain packaging. It must not implement or silently settle Stage 31–33 semantics early. The bootstrap does not satisfy Stage 33. Public distributions bundle compatible prebuilt `doriac` and `doria-lsp` binaries together with a private PHP runtime, making Rust and PHP contributor dependencies rather than Doria user dependencies.
+> A PHP bootstrap implementation of Baton may be developed before Stage 33 as a separate non-semantic tooling and distribution project. Baton is maintained in its own repository (`dorialang/baton-php`). It may wrap compiler capabilities that have already landed and establish installation, command dispatch, project discovery, minimal manifest handling, and prerelease toolchain packaging. It must not implement or silently settle Stage 31–33 semantics early. The pre-Stage-33 bootstrap milestones do not satisfy Stage 33. Once Stage 33 begins, the same disposable repository implements and exercises all three accepted product-contract slices without becoming the permanent implementation. A mandatory Pre-Stage-45 transition creates the clean Doria-native `dorialang/baton` repository, parity-ports the frozen contract, transfers production release assembly, removes the Baton PHP payload, and blocks the unsuffixed `2026.03.1` release until cutover. Bootstrap prereleases bundle compatible prebuilt `doriac` and `doria-lsp` binaries together with a private PHP runtime, making Rust and PHP contributor dependencies rather than Doria user dependencies.
 
-Author a decision record covering:
+Decision 0124 covers:
 
 * Baton’s separate repository ownership.
 * Bootstrap implementation language.
@@ -166,8 +178,6 @@ Author a decision record covering:
 * Release coordination.
 * Migration to a Doria-native Baton.
 * Separation from the later resolver, lockfile, and test decisions.
-
-Use the next free decision-record number when the record is authored.
 
 ---
 
@@ -212,7 +222,7 @@ Recognized future commands may return stage-aware diagnostics:
 Error[B0102]: `baton test` Is Not Available in This Toolchain
 
 The Doria test convention requires #[Test] attribute support and
-lands with the Stage 33 Baton MVP.
+lands with the Stage 33 Baton product contract.
 ```
 
 Baton must not approximate future behaviour through temporary conventions that could later conflict with the accepted language or package design.
@@ -220,7 +230,8 @@ Baton must not approximate future behaviour through temporary conventions that c
 ### Acceptance Criteria
 
 * The bootstrap boundary is documented in both repositories.
-* The end-to-end plan distinguishes bootstrap Baton from Stage 33.
+* The end-to-end plan distinguishes the early bootstrap, Stage 33 PHP
+  product-contract work, and the Pre-Stage-45 Doria-native transition.
 * Every command maps to an already available compiler capability.
 * No Stage 31–33 feature is represented as complete.
 * Baton source and dependencies remain outside the compiler repository.
@@ -529,8 +540,8 @@ Baton should normally use the compiler bundled with the same distribution.
 
 A random `doriac` on `PATH` must not silently override the bundled compiler.
 The PHP bootstrap enables the two development fallbacks automatically after
-checking every installed source. The later Doria-native Baton owns the final
-public distribution policy.
+checking every installed source. The Doria-native Baton owns final public
+distribution policy after the mandatory Pre-Stage-45 cutover.
 
 ### Version Validation
 
@@ -898,9 +909,13 @@ The launcher must not consult or execute a system PHP installation even when one
 
 ## 18. Milestone B13: Assemble the Distribution in `dorialang/baton-php`
 
-The Baton bootstrap repository owns assembly of the complete user-facing Doria toolchain.
+The Baton bootstrap repository owns assembly of complete user-facing
+prerelease toolchains until the native cutover.
 
-Its release workflow downloads exact compiler components published by `dorialang/doria`, verifies them, adds Baton and its private PHP runtime, and produces the final installation archives.
+Its release workflow downloads exact compiler components published by
+`dorialang/doria`, verifies them, adds Baton and its private PHP runtime, and
+produces bootstrap installation archives. Production assembly transfers to
+`dorialang/baton`; the unsuffixed `2026.03.1` release cannot use this workflow.
 
 ### Release Inputs
 
@@ -1027,7 +1042,8 @@ No absolute build-machine paths may remain in the archive.
 * The compiler repository does not run Baton packaging jobs.
 * The final bundle works after relocation.
 * The final archive contains no Composer development dependencies.
-* Toolchain assembly is fully owned by `dorialang/baton-php`.
+* Bootstrap prerelease toolchain assembly is fully owned by
+  `dorialang/baton-php` until the mandatory native cutover.
 
 ---
 
@@ -1124,9 +1140,9 @@ The workflow must verify:
 
 Package versions inside `Baton.toml` continue to use SemVer.
 
-### Final Toolchain Artifacts
+### Bootstrap Prerelease Toolchain Artifacts
 
-The `dorialang/baton-php` release workflow produces:
+Before native cutover, the `dorialang/baton-php` prerelease workflow produces:
 
 ```text
 doria-toolchain-<version>-windows-x86_64.zip
@@ -1144,7 +1160,7 @@ For every toolchain archive, publish:
 * Build provenance or CI attestation.
 * Compiler-component provenance.
 * Baton source revision.
-* Private PHP runtime identity.
+* Private PHP runtime identity for the bootstrap prerelease.
 * Dependency inventory.
 * Licence inventory.
 * Archive-size report.
@@ -1269,9 +1285,14 @@ Attribute validation and interpretation remain compiler-owned.
 
 ---
 
-## 24. Stage 33 Conversion to the Official Baton MVP
+## 24. Stage 33 Product-Contract Completion in the PHP UX Bootstrap
 
-Stage 33 completes the capabilities deliberately omitted from the bootstrap.
+Stage 33 completes the capabilities deliberately omitted from the early
+bootstrap and exercises the complete accepted user experience in
+`dorialang/baton-php`. It freezes observable product behavior for the mandatory
+Pre-Stage-45 Doria-native port. It does not promote PHP internals into permanent
+architecture, make this repository the final Baton repository, or satisfy the
+native transition.
 
 Decision 0118 divides the work into three slices. Slice 1 implements schema 2,
 schema 1 compatibility, compile-time `autoload`, source scopes, targets, and
@@ -1346,7 +1367,10 @@ baton test
 
 is green without additional configuration.
 
-At this stage Baton is no longer only a compiler wrapper. It becomes the official Doria project, package, build, and test tool.
+At this stage Baton's public behavior is no longer only a compiler wrapper: the
+PHP UX oracle exercises the official Doria project, package, build, and test
+contract. Production implementation and distribution ownership still remain
+with the mandatory Pre-Stage-45 Doria-native transition.
 
 ---
 
@@ -1397,9 +1421,9 @@ Baton owns the product workflow.
 
 ---
 
-# Part XII — Migration to Doria-Native Baton
+# Part XII — Mandatory Pre-Stage-45 Migration to Doria-Native Baton
 
-## 27. Doria-Native Baton Exit Strategy
+## 27. Doria-Native Baton Transition And Release Gate
 
 The PHP implementation is a bootstrap, not a permanent dependency.
 
@@ -1417,13 +1441,17 @@ The PHP implementation remains in:
 dorialang/baton-php
 ```
 
-for historical maintenance, compatibility testing, and bootstrap reference purposes.
+for historical maintenance, compatibility testing, and bootstrap reference
+purposes after cutover. It no longer assembles production toolchains.
+
+This transition runs after Stage 44 and before Stage 45 compiler self-hosting.
+It is a binding stage beat under Decision 0124, not an unscheduled exit option.
 
 ### Rewrite Readiness
 
-Do not begin the rewrite merely because Doria can compile basic programs.
-
-Begin when Doria can comfortably express Baton’s real implementation needs:
+The transition begins only after Doria can comfortably express Baton's real
+implementation needs and the owning stages have supplied the platform
+foundations:
 
 * Multi-file applications.
 * Namespaces.
@@ -1440,6 +1468,15 @@ Begin when Doria can comfortably express Baton’s real implementation needs:
 * Cross-platform binaries.
 * Archive handling or a stable library for it.
 * Network access when registry support becomes relevant.
+
+Stage 31 supplies multi-file applications and namespaces; the collection and
+checked-error stages supply the core data model; Stage 32 supplies test
+metadata; Stage 33 freezes Baton's product behavior; Stage 36a supplies
+filesystem and child-process foundations; Stage 40 supplies reviewed native
+integration; and Stage 44 supplies network/HTTP foundations. Environment, path,
+TOML, JSON, cryptographic hashing, and archive support are explicit transition
+entry gates and must come from reviewed Doria library/package APIs rather than
+hidden Baton-only compiler intrinsics or PHP subprocesses.
 
 ### Porting Boundaries
 
@@ -1463,19 +1500,21 @@ The Doria implementation does not need to reproduce PHP-era internal class struc
 
 Run the PHP and Doria implementations against the same fixtures and compare:
 
-* Exit codes.
-* Build paths.
-* Compiler argument vectors.
-* Manifest validation.
-* Toolchain discovery.
-* Human diagnostics.
-* Machine-readable output.
-* Generated project layouts.
-* Lockfiles once they exist.
+* Exit codes and signal behavior.
+* Build and installed paths.
+* Compiler and language-server argument vectors.
+* Manifest and lockfile parsing, validation, and canonical serialization.
+* Deterministic source inventories, build plans, receipts, and cache keys.
+* Dependency/workspace graphs, conflicts, and offline behavior.
+* Toolchain discovery and component verification.
+* Human, concise, and machine-readable diagnostics.
+* Generated project layouts and templates.
+* Test discovery, execution order, reporting, and failure behavior.
+* Clean-machine installation, relocation, and read-only toolchain roots.
 
 ### Final Transition
 
-The installed layout eventually changes from:
+The installed layout changes at the mandatory native cutover from:
 
 ```text
 bin/baton
@@ -1503,6 +1542,17 @@ package SemVer
 ```
 
 Users must not need to migrate their projects merely because Baton’s implementation language changed.
+
+Cutover is complete only when native Baton satisfies every Stage 33 acceptance
+criterion, passes the shared suite on every supported platform, and builds,
+checks, tests, and packages its own repository through the installed workflow.
+Production templates, release automation, provenance, and complete toolchain
+assembly then move to `dorialang/baton`; archives contain no PHAR, Composer
+payload, PHP launcher, or private runtime. `dorialang/baton-php` freezes as
+historical bootstrap and compatibility reference.
+
+The unsuffixed `2026.03.1` toolchain release is blocked until every transition
+criterion passes. A PHP-based canary does not satisfy this gate.
 
 ---
 
@@ -1638,7 +1688,8 @@ The following assumptions are explicitly invalid:
 
 2. **The Bootstrap Repository Is `dorialang/baton-php`**
 
-   * `dorialang/baton` is reserved for the later Doria-native implementation.
+   * `dorialang/baton` is reserved until the mandatory Pre-Stage-45 transition,
+     then becomes the production repository.
 
 3. **Atomic Compiler and Baton Commits Are Not Required**
 
@@ -1659,12 +1710,15 @@ The following assumptions are explicitly invalid:
 
 7. **The Compiler Repository Does Not Package PHP**
 
-   * Private PHP runtime ownership belongs entirely to `dorialang/baton-php`.
+   * Private PHP runtime ownership belongs entirely to `dorialang/baton-php`
+     during bootstrap prereleases and disappears from production archives at
+     native cutover.
 
 8. **The Compiler Repository Does Not Publish Complete Toolchains**
 
    * It publishes compiler components.
-   * Baton publishes the assembled distribution.
+   * `dorialang/baton-php` publishes bootstrap prereleases before cutover.
+   * `dorialang/baton` publishes production distributions after cutover.
 
 9. **Compiler Contracts Must Be Explicit**
 
@@ -1672,7 +1726,10 @@ The following assumptions are explicitly invalid:
 
 10. **The Doria-Native Rewrite Gets a Clean Repository**
 
-    * The future `dorialang/baton` repository does not inherit the bootstrap repository’s PHP history.
+    * The Pre-Stage-45 `dorialang/baton` repository does not inherit the
+      bootstrap repository's PHP history.
+    * The rewrite and production cutover are mandatory before the unsuffixed
+      `2026.03.1` release, not an optional later migration.
 
 11. **Toolchain Releases Use CalVer**
 
@@ -1691,7 +1748,7 @@ The following assumptions are explicitly invalid:
 The early Baton effort is complete when:
 
 * `dorialang/baton-php` exists as an independent repository.
-* `dorialang/baton` remains reserved for the future Doria-native implementation.
+* `dorialang/baton` remains reserved for the mandatory Doria-native transition.
 * No Baton source or Composer dependency exists in `dorialang/doria`.
 * The end-to-end plan records the repository and ownership boundary.
 * The compiler repository publishes prebuilt `doriac` and `doria-lsp` components.
@@ -1702,12 +1759,30 @@ The early Baton effort is complete when:
 * Package versions use SemVer.
 * Toolchain components use CalVer.
 * Baton includes an isolated private PHP runtime.
-* Final archives are assembled in `dorialang/baton-php`.
+* Bootstrap prerelease archives are assembled in `dorialang/baton-php`.
 * Clean-machine tests pass without Rust, Cargo, PHP, or Composer.
 * Compiler maintainers do not inherit Baton dependency or packaging work.
 * Baton maintainers can update project workflow without modifying compiler source.
 * Cross-repository compiler contracts are schema-versioned.
-* The PHP implementation can later be replaced without changing durable project contracts.
+* The PHP implementation can be parity-ported without changing durable project contracts.
+
+## 33. Doria-Native Transition Completion Criteria
+
+The Baton transition is complete when:
+
+* the clean `dorialang/baton` repository contains the production Doria source;
+* all Stage 33 behavior is represented in the shared implementation-neutral
+  compatibility suite;
+* PHP and Doria agree on commands, arguments, exit/signal behavior, schemas,
+  diagnostics, resolution, workspaces, caches, tests, paths, and offline use;
+* native Baton builds, checks, tests, and packages its own repository;
+* production templates and release/toolchain assembly belong to
+  `dorialang/baton`;
+* clean-machine native-only archives pass on every supported platform;
+* no production archive contains a PHAR, Composer payload, PHP launcher, or
+  private PHP runtime;
+* `dorialang/baton-php` is frozen as historical and compatibility reference;
+* the unsuffixed `2026.03.1` release gate records the native cutover as passed.
 
 ## Final Product Principle
 
@@ -1715,8 +1790,10 @@ The early Baton effort is complete when:
 
 `dorialang/doria` builds the language, compiler, and compiler components.
 
-`dorialang/baton-php` builds the bootstrap project experience and assembles the public toolchain.
+`dorialang/baton-php` builds the bootstrap project experience, validates the
+Stage 33 contract, and assembles prerelease toolchains only until cutover.
 
-`dorialang/baton` will eventually contain the clean Doria-native implementation.
+`dorialang/baton` contains the clean Doria-native implementation and owns
+production toolchain assembly after the mandatory Pre-Stage-45 cutover.
 
 The implementation languages of the bootstrap tools remain contributor details, not user installation requirements.

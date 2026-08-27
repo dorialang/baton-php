@@ -8,9 +8,10 @@ Baton is Doria's project manager and toolchain driver. Its architecture keeps pr
 | --- | --- |
 | Doria syntax, types, semantics, diagnostics, and code generation | `dorialang/doria` |
 | Compiler component builds and machine-readable compiler identity | `dorialang/doria` |
-| Project discovery, manifests, templates, build layout, and command workflow | `dorialang/baton-php` |
-| Compiler discovery, validation, and process invocation | `dorialang/baton-php` |
-| Private runtime packaging and complete toolchain archives | `dorialang/baton-php` |
+| Stage 33 UX-contract implementation, project discovery, manifests, templates, build layout, and command workflow | `dorialang/baton-php` until native cutover |
+| Bootstrap compiler discovery, validation, and process invocation | `dorialang/baton-php` until native cutover |
+| Bootstrap private-runtime packaging and prerelease toolchain archives | `dorialang/baton-php` until native cutover |
+| Production project/package workflow, templates, native executable, and complete toolchain archives | `dorialang/baton` after the mandatory Pre-Stage-45 cutover |
 | Language server, syntax highlighting, and editor integrations | `dorialang/doria-language-server` |
 
 Baton never parses Doria source or attempts to reproduce a compiler diagnostic. It selects a compatible `doriac`, constructs an argument vector, and forwards the process result.
@@ -18,6 +19,13 @@ Baton never parses Doria source or attempts to reproduce a compiler diagnostic. 
 ## Bootstrap implementation strategy
 
 The PHP implementation is intentionally lean and disposable. Its purpose is to improve the Doria development workflow now and gather concrete feedback about Baton's commands, diagnostics, paths, and project conventions before the durable implementation is written in Doria.
+
+Stage 33 deliberately finishes the accepted package, dependency, workspace,
+test, cache, lockfile, and offline behavior in this bootstrap. That milestone
+freezes an exercised observable contract; it does not promote the PHP internals
+or repository into the permanent architecture. Decision 0124 requires the
+Pre-Stage-45 transition to port the contract to the clean `dorialang/baton`
+repository under one shared behavior suite.
 
 Symfony Console provides the command structure. Bootstrap features should normally be implemented directly in those commands, with integration tests preserving the useful experience. PHP abstraction layers are added only when they remove real duplication or enforce a security boundary; they are not a rehearsal for the Doria-native internal architecture.
 
@@ -70,7 +78,7 @@ The Baton repository builds and tests without a compiler repository checkout. In
 
 No workflow may infer a compiler from a sibling directory. Local contributors supply an absolute compiler path or explicitly enable development discovery.
 
-## Distribution architecture
+## Bootstrap distribution architecture
 
 The assembled toolchain has this platform-specific shape:
 
@@ -99,9 +107,31 @@ The public launcher resolves the private PHP runtime relative to the installed t
 
 `toolchain.json` records the exact compatible components and their hashes. It is internal installation metadata and is unrelated to project dependency resolution.
 
+This layout is permitted for bootstrap prereleases only. The parity-gated
+native cutover replaces it with:
+
+```text
+doria-toolchain-<calver>-<platform>-<architecture>/
+├── bin/
+│   ├── baton
+│   ├── doriac
+│   └── doria-lsp
+├── share/
+│   └── doria/
+│       └── templates/
+├── toolchain.json
+├── LICENSE
+└── LICENSES/
+```
+
+The production `bin/baton` is the Doria-native executable. The archive contains
+no Baton PHAR, Composer dependencies, PHP launcher, or private PHP runtime.
+
 ## Migration constraint
 
-The PHP implementation is a bootstrap, not part of the public project contract. A later Doria-native implementation may replace its internals while preserving:
+The PHP implementation is a bootstrap, not part of the public project contract.
+The mandatory Pre-Stage-45 transition replaces it with the Doria-native
+implementation while preserving:
 
 - `Baton.toml` and `Baton.lock`;
 - command names and argument behavior;
@@ -111,6 +141,12 @@ The PHP implementation is a bootstrap, not part of the public project contract. 
 - compiler and toolchain manifest schemas.
 
 Project users must not need to migrate because Baton's implementation language changes.
+
+Cutover requires shared PHP/Doria fixtures for every observable contract, native
+Baton self-build/check/test/package coverage, clean-machine native-only archive
+tests, and production release-ownership transfer to `dorialang/baton`.
+`dorialang/baton-php` then freezes as historical and compatibility reference.
+The unsuffixed `2026.03.1` toolchain may not ship before this gate passes.
 
 The accepted target architecture is detailed in [Phase F package and dependency
 model](phase-f-package-and-dependency-model.md). It remains separate from the

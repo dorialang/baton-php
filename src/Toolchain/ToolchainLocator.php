@@ -185,16 +185,20 @@ final class ToolchainLocator
                 'Doria Source Launcher Is Not A Toolchain Component',
                 "The compiler selected from {$source} is Doria's Cargo-backed source launcher:\n"
                     . "    {$path}\n\n"
-                    . 'Install a compiled doriac artifact and select that executable instead.',
+                    . "This launcher runs Cargo from the Doria source tree on every call.\n"
+                    . '`cargo build --release -p doriac` creates target/release/doriac, '
+                    . 'but it does not install that executable or change which doriac Baton discovers.',
                 [
-                    'The launcher rebuilds from source on each call, so it cannot carry the',
-                    'stable identity and digest a toolchain component needs. Build the',
-                    'compiler once, then select the compiled artifact:',
+                    'From a Doria source checkout, run '
+                    . '`php scripts/refresh_development_toolchain.php --language-server '
+                    . '/absolute/path/to/doria-language-server` to install compiled doriac and '
+                    . 'doria-lsp artifacts into Cargo\'s install root.',
+                    'For a compiler-only checkout, `cargo install --locked --force --path crates/doriac`',
+                    'installs doriac there. Then remove or repoint the source-launcher symlink shown',
+                    'above so `command -v doriac` resolves to the compiled Cargo installation.',
+                    'Confirm the compiler Baton discovers after correcting the installation:',
                 ],
-                [
-                    'cargo build --release -p doriac',
-                    'baton run --compiler /absolute/path/to/target/release/doriac',
-                ],
+                ['baton doctor'],
             );
         }
 

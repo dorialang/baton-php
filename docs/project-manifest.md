@@ -96,4 +96,6 @@ model](phase-f-package-and-dependency-model.md).
 
 The current bootstrap does not parse schema 2. Schema 1 remains one explicit
 binary entry with no autoload, dependency, lockfile, or workspace behavior; it
-will not be reinterpreted silently.
+will not be reinterpreted silently. Stage 33 adds schema 2 here to exercise and
+freeze the product contract. The Pre-Stage-45 Doria-native port must consume the same
+fixtures and schema without migrating user projects.

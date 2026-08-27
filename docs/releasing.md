@@ -1,6 +1,13 @@
 # Releasing Baton and the Doria Toolchain
 
-The `dorialang/baton-php` repository assembles and publishes complete Doria toolchain distributions. The compiler and language-server repositories publish component artifacts; Baton combines exact compatible components with its private runtime and verifies the result as users receive it.
+Before the mandatory native cutover, the `dorialang/baton-php` repository
+assembles and publishes Doria toolchain prereleases. The compiler and
+language-server repositories publish component artifacts; the bootstrap
+combines exact compatible components with its private runtime and verifies the
+result as users receive it. Decision 0124 transfers production release assembly
+to the clean Doria-native `dorialang/baton` repository during the Pre-Stage-45
+transition. This repository may not publish the unsuffixed `2026.03.1`
+toolchain.
 
 ## Version format
 
@@ -16,7 +23,7 @@ The year and month match the release date, and `n` is the sequence within that m
 
 Every public component reports the same toolchain CalVer. Repository commit histories and internal package versions remain independent.
 
-## Required immutable inputs
+## Bootstrap immutable inputs
 
 A release assembly identifies:
 
@@ -63,9 +70,13 @@ doria-toolchain-<version>-macos-x86_64.tar.gz
 doria-toolchain-<version>-macos-aarch64.tar.gz
 ```
 
-Each archive includes launchers, Baton, `doriac`, `doria-lsp`, the private PHP runtime, templates, `toolchain.json`, the project licence, and third-party notices.
+Before cutover, each prerelease archive includes launchers, Baton, `doriac`,
+`doria-lsp`, the private PHP runtime, templates, `toolchain.json`, the project
+licence, and third-party notices. After cutover, production archives contain the
+native `bin/baton`, `doriac`, `doria-lsp`, templates, metadata, licences, and no
+Baton PHAR, Composer payload, PHP launcher, or private PHP runtime.
 
-## Assembly checklist
+## Bootstrap prerelease assembly checklist
 
 1. Download exact component archives.
 2. Verify published checksums and component manifests.
@@ -89,6 +100,29 @@ php packaging/php-runtime/build.php
 ```
 
 Release CI may add `--prepare` on a disposable runner. See [Private Baton runtime](runtime.md) for the immutable inputs, extension set, generated manifests, and security-update procedure.
+
+## Doria-native production cutover
+
+The Pre-Stage-45 transition must complete all of the following before an
+unsuffixed release:
+
+1. Build the production Baton executable from the clean `dorialang/baton`
+   repository with the selected `doriac` component.
+2. Run the shared PHP/Doria behavior suite for commands, manifests, lockfiles,
+   resolution, workspaces, diagnostics, build plans, receipts, caches, tests,
+   templates, paths, and offline operation.
+3. Have native Baton build, check, test, and package its own repository.
+4. Transfer templates, release workflows, archive ownership, provenance, and
+   clean-machine matrices to `dorialang/baton`.
+5. Assemble the native-only layout documented in
+   [Architecture](architecture.md), verify relocation and offline use, and
+   assert that no PHAR, Composer dependency, PHP launcher, or private runtime is
+   present.
+6. Freeze `dorialang/baton-php` as historical bootstrap and compatibility
+   reference.
+
+The unsuffixed `2026.03.1` release is blocked until every item passes on every
+supported platform. A canary carrying the bootstrap is not a cutover pass.
 
 ## Clean-machine acceptance
 
@@ -116,7 +150,8 @@ Publish with every archive:
 - CI provenance or attestation;
 - compiler and language-server component provenance;
 - Baton source revision;
-- private runtime identity;
+- private runtime identity for bootstrap prereleases, or an explicit native-only
+  inventory after cutover;
 - dependency and licence inventories;
 - archive-size and component-version reports;
 - clean-machine test results.

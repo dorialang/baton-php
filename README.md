@@ -21,10 +21,15 @@ cd hello-doria
 baton run
 ```
 
-A Doria toolchain distribution contains Baton, `doriac`, `doria-lsp`, and the private runtime Baton needs. Using it does not require Rust, Cargo, PHP, Composer, or a repository checkout.
+A PHP-bootstrap prerelease contains Baton, `doriac`, `doria-lsp`, and Baton's
+isolated private runtime. After the mandatory native cutover, production
+toolchains contain the Doria-native Baton executable, `doriac`, and `doria-lsp`
+with no Baton PHP payload. Neither layout requires Rust, Cargo, system PHP,
+Composer, or a repository checkout.
 
 Run `baton doctor` after installation to verify component versions and hashes,
-the private runtime, host compatibility, and writable project/cache locations.
+host compatibility, and writable project/cache locations. Bootstrap prereleases
+also verify their private runtime.
 
 ## Commands
 
@@ -88,6 +93,13 @@ deterministic JSON `Baton.lock`, workspaces, explicit processors, a
 content-addressed cache, and offline builds. Those commands and fields are not
 accepted by the bootstrap parser yet.
 
+Stage 33 implements and exercises that complete product contract in this
+disposable bootstrap. It does not make PHP Baton's permanent implementation.
+After the required Doria tooling foundations land, the mandatory Pre-Stage-45
+transition parity-ports the frozen behavior to the clean `dorialang/baton`
+repository. The unsuffixed `2026.03.1` release is blocked until production
+toolchains use the native Baton executable and carry no Baton PHP runtime.
+
 See [Phase F package and dependency model](docs/phase-f-package-and-dependency-model.md)
 for the complete target contract and its current-state boundary.
 
@@ -101,16 +113,21 @@ See [Toolchain discovery and validation](docs/toolchain.md) for the complete sel
 
 ## Repository boundaries
 
-This repository owns:
+Until the native cutover, this repository owns:
 
 - the Baton command-line experience;
 - `Baton.toml` loading and project discovery;
 - project templates and build layout;
 - compiler discovery and safe process invocation;
 - private runtime packaging;
-- final Doria toolchain assembly and distribution tests.
+- prerelease Doria toolchain assembly and distribution tests.
 
 The [`dorialang/doria`](https://github.com/dorialang/doria) repository owns the language, compiler, and compiler component artifacts. The [`dorialang/doria-language-server`](https://github.com/dorialang/doria-language-server) repository owns `doria-lsp` and editor integrations.
+
+The clean `dorialang/baton` repository will own the production Doria-native
+Baton, templates, and complete toolchain releases after the parity-gated
+Pre-Stage-45 transition. This repository then freezes as historical bootstrap
+and compatibility reference.
 
 Read [Architecture](docs/architecture.md) for the component and ownership model.
 

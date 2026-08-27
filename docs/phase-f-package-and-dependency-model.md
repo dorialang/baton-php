@@ -224,6 +224,11 @@ Stage 31 has two compiler slices: namespace/name-resolution foundations, then
 multi-file package graphs and build plans. Stage 32 supplies typed attribute
 metadata and the processor protocol. Stage 33 has three Baton slices: schema 2
 and source inventory; resolver/lock/cache; then workspaces/tests/processors.
+Those slices run in this disposable PHP UX bootstrap to validate and freeze the
+observable contract. Decision 0124 then requires a parity-gated Pre-Stage-45
+port to the clean Doria-native `dorialang/baton` repository, production release
+ownership transfer, and removal of the Baton PHP payload before the unsuffixed
+`2026.03.1` release.
 
 The active language sequence remains unchanged. This document does not begin
 those implementation stages.

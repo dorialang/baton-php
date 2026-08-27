@@ -4,7 +4,7 @@ Thank you for helping improve Doria's project and toolchain experience.
 
 ## Before you begin
 
-Read the repository's [development plan](docs/baton-php-development-plan.md) and [architecture](docs/architecture.md) before changing a public command, manifest field, compiler contract, installed layout, or release artifact. These surfaces must remain compatible with the later Doria-native Baton implementation.
+Read the repository's [development plan](docs/baton-php-development-plan.md) and [architecture](docs/architecture.md) before changing a public command, manifest field, compiler contract, installed layout, or release artifact. Stage 33 freezes these surfaces here as an exercised UX contract; the mandatory Pre-Stage-45 transition parity-ports them to the Doria-native Baton implementation.
 
 Changes to Doria syntax, parsing, type checking, diagnostics, or code generation belong in [`dorialang/doria`](https://github.com/dorialang/doria). Editor and language-server changes belong in [`dorialang/doria-language-server`](https://github.com/dorialang/doria-language-server).
 
@@ -66,12 +66,15 @@ php bin/baton run
 ```
 
 Installed toolchain metadata and a compiler beside Baton still take precedence.
-The later Doria-native Baton owns the final public distribution policy.
+The Doria-native Baton owns final public distribution policy after the
+Pre-Stage-45 cutover. Bootstrap prereleases may still exercise the PHP
+distribution, but the unsuffixed `2026.03.1` release may not ship it.
 
 ## Design and implementation rules
 
 - Treat the PHP bootstrap as a lean developer-experience prototype. Prefer direct Symfony commands and concrete integration tests over abstractions intended for long-term reuse.
 - The durable Baton implementation will be written in Doria. Do not pre-build its internal architecture in PHP.
+- Express every Stage 33 behavior in implementation-neutral fixtures suitable for the shared PHP/Doria transition suite; a PHP-only test is insufficient when it defines a public contract.
 - Keep Baton semantic-free. It coordinates projects and invokes `doriac`; it does not parse or reinterpret Doria source.
 - Route every compiler process through `CompilerAdapter`.
 - Pass process arguments as arrays. Never construct a shell command with interpolated paths or user input.
