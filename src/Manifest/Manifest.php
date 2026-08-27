@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Doria\Baton\Manifest;
 
-/** The validated, minimal bootstrap manifest (plan B6). */
-final class Manifest
+/** The exact historical schema-1 manifest model. */
+final readonly class Manifest
 {
     public function __construct(
         public readonly int $manifestVersion,

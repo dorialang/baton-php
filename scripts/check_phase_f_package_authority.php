@@ -29,23 +29,17 @@ $architecturePath = 'docs/architecture.md';
 $developmentPath = 'docs/baton-php-development-plan.md';
 $securityPath = 'SECURITY.md';
 $readmePath = 'README.md';
-$loaderPath = 'src/Manifest/ManifestLoader.php';
-$templatePath = 'templates/project/Baton.toml';
-$applicationPath = 'src/Application.php';
-
 $model = $read($modelPath);
 $manifest = $read($manifestPath);
 $architecture = $read($architecturePath);
 $development = $read($developmentPath);
 $security = $read($securityPath);
 $readme = $read($readmePath);
-$loader = $read($loaderPath);
-$template = $read($templatePath);
-$application = $read($applicationPath);
 
 $require($modelPath, $model, [
-    'The current bootstrap reads manifest schema 1 only',
+    'The bootstrap continues to read historical manifest schema 1 exactly',
     'Schema 1 means one binary, one explicit entry file',
+    'Stage 33 Slice 1 also accepts strict schema 2',
     'manifest-version = 2',
     '[autoload.namespaces]',
     '[autoload-dev.namespaces]',
@@ -70,58 +64,39 @@ $require($modelPath, $model, [
     'No package-defined arbitrary build scripts',
     'global content-addressed cache',
     'Offline install/check/build/run/test never reaches the network',
-    'not registered by the current PHP bootstrap',
-    'Stage 31 has two compiler slices',
-    'Stage 33 has three Baton slices',
+    'Stage 33 Slice 1 is complete',
+    'Stage 33 Slice 2 is next',
+    'Stage 33 remains in progress, not complete',
 ]);
 
 $require($manifestPath, $manifest, [
     '## Schema 1',
-    '## Accepted schema 2 target',
-    'The current bootstrap does not parse schema 2',
+    '## Schema 2',
+    'Schema 1 has one explicit binary entry',
+    'targets, dependency tables, lockfile semantics, workspace, or processors',
 ]);
 $require($architecturePath, $architecture, [
     'Baton discovers source through compile-time `autoload`',
     '`Baton.toml`, resolves package versions',
 ]);
 $require($developmentPath, $development, [
-    'Slice 1 implements schema 2',
-    'Slice 2 implements path and Git',
-    'Slice 3 implements workspaces',
+    '### Stage 33 Slice 1 - Complete',
+    '### Stage 33 Slice 2 - Next',
+    '### Stage 33 Slice 3 - Pending',
+    'Stage 33 is in progress, not complete',
 ]);
 $require($securityPath, $security, [
     '## Accepted package-system threat model',
     'Offline mode never reaches the network',
 ]);
 $require($readmePath, $readme, [
-    'This PHP bootstrap currently executes manifest schema 1 only',
-    'accepted by the bootstrap parser yet',
+    'Stage 33 Slice 1 implements strict manifest schema 2',
+    'Schema 1 remains exactly compatible',
+    'Dependency tables, `Baton.lock`, package',
 ]);
-
-$require($loaderPath, $loader, [
-    'private const SUPPORTED_MANIFEST_VERSION = 1;',
-    "private const SUPPORTED_KINDS = ['binary'];",
-]);
-$require($templatePath, $template, [
-    'manifest-version = 1',
-    'kind = "binary"',
-    'entry = "src/main.doria"',
-]);
-
-foreach (['autoload.namespaces', 'dependencies', 'dev-dependencies', 'processors', 'workspace'] as $futureField) {
-    if (str_contains($template, $futureField)) {
-        $failures[] = "{$templatePath}: schema 1 template gained future field `{$futureField}`";
-    }
-}
-
-foreach (['install', 'add', 'remove', 'update', 'fetch', 'tree', 'why', 'test'] as $futureCommand) {
-    if (preg_match('/new\\s+' . preg_quote(ucfirst($futureCommand), '/') . 'Command\\b/', $application) === 1) {
-        $failures[] = "{$applicationPath}: future command `{$futureCommand}` was registered early";
-    }
-}
 
 if (is_file($root . '/Baton.lock')) {
-    $failures[] = 'Baton.lock: authority work generated a lockfile';
+    $failures[] = 'Baton.lock: Slice 1 generated a repository lockfile';
 }
 
 foreach (['Andrew', 'Lucy', 'Masiye'] as $privateName) {

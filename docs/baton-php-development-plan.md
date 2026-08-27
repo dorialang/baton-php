@@ -1294,14 +1294,29 @@ Pre-Stage-45 Doria-native port. It does not promote PHP internals into permanent
 architecture, make this repository the final Baton repository, or satisfy the
 native transition.
 
-Decision 0118 divides the work into three slices. Slice 1 implements schema 2,
-schema 1 compatibility, compile-time `autoload`, source scopes, targets, and
-deterministic single-package build plans. Slice 2 implements path and Git
-resolution, SemVer validation, one-version conflict reporting, deterministic
-JSON `Baton.lock`, dependency commands, the global content-addressed cache, and
-offline resolution. Slice 3 implements workspaces, development dependencies,
-graph commands, incremental inventory, `baton test`, explicit processor
-orchestration, and Phase F closure.
+Decision 0118 divides the work into three slices.
+
+### Stage 33 Slice 1 - Complete
+
+Schema 2, exact schema-1 compatibility, compile-time `autoload`, source scopes,
+targets, deterministic single-package compiler build plans, target-scoped build
+layouts, and receipts are implemented.
+
+### Stage 33 Slice 2 - Next
+
+Path and Git resolution, SemVer constraint solving, one-version conflict
+reporting, deterministic JSON `Baton.lock`, dependency commands, the global
+content-addressed cache, and offline resolution land next.
+
+### Stage 33 Slice 3 - Pending
+
+Workspaces, development dependencies, graph commands, incremental inventory,
+`baton test`, explicit processor orchestration, generated-source writes, and
+Phase F closure remain pending.
+
+Stage 33 is in progress, not complete. The mandatory Pre-Stage-45 Doria-native
+Baton transition remains scheduled after the observable product contract is
+frozen and parity-proven.
 
 ### Add
 
@@ -1353,9 +1368,10 @@ The resolver must leave room for:
 
 It must not assume every dependency is pure, target-independent Doria source.
 
-The current PHP bootstrap remains schema 1 until these slices land. It does not
-register future dependency commands, change project templates, generate
-`Baton.lock`, or perform network resolution early.
+The current PHP bootstrap accepts exact schema 1 and strict schema 2
+single-package projects. Dependency commands are recognized only to report the
+Slice-2 boundary; they do not resolve, fetch, cache, or write `Baton.lock`.
+Workspace, test, and processor behavior remains inert until Slice 3.
 
 ### Stage 33 Acceptance Criterion
 

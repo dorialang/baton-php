@@ -63,18 +63,37 @@ final class Application
             // Deliberately deferred to the Stage 33 Baton MVP or later.
             new StageGatedCommand('test', 'Run project tests', $stage33(
                 'test',
-                "The Doria test convention requires #[Test] attribute support and\n"
-                    . "lands with the Stage 33 Baton MVP."
+                "Compiler-owned #[Test] metadata is available. Test discovery and\n"
+                    . "execution land in Stage 33 Slice 3."
+            )),
+            new StageGatedCommand('install', 'Install package dependencies', $stage33(
+                'install',
+                "Dependency resolution, Baton.lock, and installation land in\n"
+                    . "Stage 33 Slice 2."
             )),
             new StageGatedCommand('add', 'Add a dependency', $stage33(
                 'add',
-                "Dependency management (resolver and Baton.lock) lands with the\n"
-                    . "Stage 33 Baton MVP."
+                "Dependency mutation and resolution land in Stage 33 Slice 2."
             )),
             new StageGatedCommand('remove', 'Remove a dependency', $stage33(
                 'remove',
-                "Dependency management (resolver and Baton.lock) lands with the\n"
-                    . "Stage 33 Baton MVP."
+                "Dependency mutation and resolution land in Stage 33 Slice 2."
+            )),
+            new StageGatedCommand('update', 'Update package dependencies', $stage33(
+                'update',
+                "Dependency updates and lockfile ownership land in Stage 33 Slice 2."
+            )),
+            new StageGatedCommand('fetch', 'Fetch package sources', $stage33(
+                'fetch',
+                "Package source fetching and caching land in Stage 33 Slice 2."
+            )),
+            new StageGatedCommand('tree', 'Show the dependency tree', $stage33(
+                'tree',
+                "Resolved dependency graph inspection lands in Stage 33 Slice 2."
+            )),
+            new StageGatedCommand('why', 'Explain why a dependency is present', $stage33(
+                'why',
+                "Resolved dependency graph inspection lands in Stage 33 Slice 2."
             )),
             new StageGatedCommand('publish', 'Publish the package', $stage33(
                 'publish',

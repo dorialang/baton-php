@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace Doria\Baton\Commands;
 
+use Doria\Baton\Build\Schema2BuildService;
+use Doria\Baton\Build\Schema2ProjectContextFactory;
 use Doria\Baton\Diagnostics\BatonError;
+use Doria\Baton\Manifest\Manifest;
 use Doria\Baton\Manifest\ManifestLoader;
+use Doria\Baton\Manifest\TargetSelector;
 use Doria\Baton\Project\ProjectLocator;
 use Doria\Baton\Toolchain\Platform;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -39,6 +43,7 @@ final class RunCommand extends BatonCommand
                 InputArgument::OPTIONAL | InputArgument::IS_ARRAY,
                 'Arguments passed to the program after --',
             );
+        TargetOptions::configure($this);
         CompilerOptions::configure($this);
     }
 
@@ -46,8 +51,49 @@ final class RunCommand extends BatonCommand
     {
         $projectRoot = (new ProjectLocator())->locate(getcwd() ?: '.');
         $manifest = (new ManifestLoader())->load($projectRoot);
+        [$binary, $library] = TargetOptions::read($input);
+        $selected = (new TargetSelector())->select($manifest, $binary, $library, 'run');
         $release = (bool) $input->getOption('release');
 
+        if ($manifest instanceof Manifest) {
+            $build = $this->buildSchema1($input, $output, $projectRoot, $manifest, $release);
+            if ($build['exitCode'] !== self::SUCCESS) {
+                return $build['exitCode'];
+            }
+            $artifact = $build['artifact'];
+        } else {
+            $toolchain = CompilerOptions::locate($input);
+            $context = (new Schema2ProjectContextFactory())->create(
+                $projectRoot,
+                $manifest,
+                $selected,
+                $toolchain,
+                $release ? 'release' : 'development',
+            );
+            $buildOutput = $output->isVerbose() ? $output : new BufferedOutput();
+            $buildExitCode = (new Schema2BuildService())->build($context, $buildOutput);
+            if ($buildExitCode !== self::SUCCESS) {
+                $this->forwardBuildFailure($buildOutput);
+
+                return $buildExitCode;
+            }
+            $artifact = $context->layout->artifact;
+        }
+
+        /** @var list<string> $programArguments */
+        $programArguments = $input->getArgument('arguments');
+
+        return $this->runArtifact($artifact, $programArguments, $projectRoot);
+    }
+
+    /** @return array{exitCode: int, artifact: string} */
+    private function buildSchema1(
+        InputInterface $input,
+        OutputInterface $output,
+        string $projectRoot,
+        Manifest $manifest,
+        bool $release,
+    ): array {
         $buildArguments = [];
         if ($release) {
             $buildArguments['--release'] = true;
@@ -66,31 +112,37 @@ final class RunCommand extends BatonCommand
         $buildOutput = $output->isVerbose() ? $output : new BufferedOutput();
         $buildExitCode = (new BuildCommand())->run($buildInput, $buildOutput);
         if ($buildExitCode !== self::SUCCESS) {
-            if ($buildOutput instanceof BufferedOutput) {
-                $diagnostic = $buildOutput->fetch();
-                if ($diagnostic !== '') {
-                    fwrite(STDERR, $diagnostic);
-                }
-            }
+            $this->forwardBuildFailure($buildOutput);
 
-            return $buildExitCode;
+            return ['exitCode' => $buildExitCode, 'artifact' => ''];
         }
 
-        $profile = $release ? 'release' : 'development';
-        $artifact = $projectRoot
-            . DIRECTORY_SEPARATOR
-            . 'build'
-            . DIRECTORY_SEPARATOR
-            . Platform::host()->target()
-            . DIRECTORY_SEPARATOR
-            . $profile
-            . DIRECTORY_SEPARATOR
-            . $manifest->name
-            . (PHP_OS_FAMILY === 'Windows' ? '.exe' : '');
-        /** @var list<string> $programArguments */
-        $programArguments = $input->getArgument('arguments');
+        return [
+            'exitCode' => self::SUCCESS,
+            'artifact' => $projectRoot
+                . DIRECTORY_SEPARATOR . 'build'
+                . DIRECTORY_SEPARATOR . Platform::host()->target()
+                . DIRECTORY_SEPARATOR . ($release ? 'release' : 'development')
+                . DIRECTORY_SEPARATOR . $manifest->name
+                . (PHP_OS_FAMILY === 'Windows' ? '.exe' : ''),
+        ];
+    }
+
+    private function forwardBuildFailure(OutputInterface $output): void
+    {
+        if ($output instanceof BufferedOutput) {
+            $diagnostic = $output->fetch();
+            if ($diagnostic !== '') {
+                fwrite(STDERR, $diagnostic);
+            }
+        }
+    }
+
+    /** @param list<string> $arguments */
+    private function runArtifact(string $artifact, array $arguments, string $projectRoot): int
+    {
         $process = new Process(
-            [$artifact, ...$programArguments],
+            [$artifact, ...$arguments],
             $projectRoot,
             input: STDIN,
             timeout: null,

@@ -5,7 +5,9 @@
     "require": {
         "php": "^8.4",
         "symfony/console": "^8.1",
-        "symfony/process": "^8.1"
+        "symfony/process": "^8.1",
+        "php-collective/toml": "^0.1.5",
+        "composer/semver": "^3.4"
     },
     "require-dev": {
         "phpstan/phpstan": "^2.2",
@@ -30,13 +32,16 @@
             "php -l packaging/php-runtime/build.php"
         ],
         "check:phase-f": "php scripts/check_phase_f_package_authority.php",
+        "check:stage33-slice1": "php scripts/check_stage33_slice1_manifest_and_inventory.php",
         "build:phar": "php -d phar.readonly=0 packaging/build-phar.php",
+        "smoke:phar:stage33-slice1": "php scripts/smoke_stage33_slice1_phar.php build/baton.phar",
         "runtime:plan": "php packaging/php-runtime/build.php --print-plan",
         "check": [
             "@test",
             "@analyse",
             "@lint:packaging",
-            "@check:phase-f"
+            "@check:phase-f",
+            "@check:stage33-slice1"
         ]
     },
     "authors": [

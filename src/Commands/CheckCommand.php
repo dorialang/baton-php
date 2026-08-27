@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace Doria\Baton\Commands;
 
 use Doria\Baton\Compiler\CompilerAdapter;
+use Doria\Baton\Build\Schema2ProjectContextFactory;
+use Doria\Baton\Manifest\Manifest;
 use Doria\Baton\Manifest\ManifestLoader;
+use Doria\Baton\Manifest\TargetSelector;
 use Doria\Baton\Project\ProjectLocator;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
@@ -19,6 +22,7 @@ final class CheckCommand extends BatonCommand
 {
     protected function configure(): void
     {
+        TargetOptions::configure($this);
         CompilerOptions::configure($this);
     }
 
@@ -26,13 +30,27 @@ final class CheckCommand extends BatonCommand
     {
         $projectRoot = (new ProjectLocator())->locate(getcwd() ?: '.');
         $manifest = (new ManifestLoader())->load($projectRoot);
-
+        [$binary, $library] = TargetOptions::read($input);
+        $selected = (new TargetSelector())->select($manifest, $binary, $library, 'check');
         $toolchain = CompilerOptions::locate($input);
 
-        // Run the compiler from the project root so its diagnostics carry the
-        // project-relative entry path, and forward them (and the exit code)
-        // unchanged.
-        return (new CompilerAdapter($toolchain->compilerPath))
-            ->passthrough(['check', $manifest->entry], $projectRoot);
+        if ($manifest instanceof Manifest) {
+            // Schema 1 deliberately retains its direct compiler boundary.
+            return (new CompilerAdapter($toolchain->compilerPath))
+                ->passthrough(['check', $manifest->entry], $projectRoot);
+        }
+
+        $context = (new Schema2ProjectContextFactory())->create(
+            $projectRoot,
+            $manifest,
+            $selected,
+            $toolchain,
+            'development',
+        );
+
+        return (new CompilerAdapter($toolchain->compilerPath))->passthrough(
+            ['check', '--build-plan', $context->buildPlan->path],
+            $projectRoot,
+        );
     }
 }

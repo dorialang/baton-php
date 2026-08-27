@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 namespace Doria\Baton\Commands;
 
+use Doria\Baton\Build\Schema2BuildService;
+use Doria\Baton\Build\Schema2ProjectContextFactory;
 use Doria\Baton\Compiler\CompilerAdapter;
 use Doria\Baton\Diagnostics\BatonError;
+use Doria\Baton\Manifest\Manifest;
 use Doria\Baton\Manifest\ManifestLoader;
+use Doria\Baton\Manifest\TargetSelector;
 use Doria\Baton\Project\ProjectLocator;
+use Doria\Baton\Toolchain\ToolchainSelection;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -34,6 +39,7 @@ final class BuildCommand extends BatonCommand
             InputOption::VALUE_REQUIRED,
             'Write the artifact to this path instead of the managed build directory',
         );
+        TargetOptions::configure($this);
         CompilerOptions::configure($this);
     }
 
@@ -41,29 +47,59 @@ final class BuildCommand extends BatonCommand
     {
         $projectRoot = (new ProjectLocator())->locate(getcwd() ?: '.');
         $manifest = (new ManifestLoader())->load($projectRoot);
+        [$binary, $library] = TargetOptions::read($input);
+        $selected = (new TargetSelector())->select($manifest, $binary, $library, 'build');
         $toolchain = CompilerOptions::locate($input);
         $release = (bool) $input->getOption('release');
         $profile = $release ? 'release' : 'development';
-
         /** @var string|null $out */
         $out = $input->getOption('out');
-        if ($out !== null && $out !== '') {
-            // Explicit output path: write exactly there and skip the managed
-            // build/ layout and its build.json metadata.
-            $artifact = $this->absolutePath($out, getcwd() ?: $projectRoot);
+        $explicitOutput = $out === null || $out === ''
+            ? null
+            : $this->absolutePath($out, getcwd() ?: $projectRoot);
+
+        if ($manifest instanceof Manifest) {
+            return $this->buildSchema1(
+                $projectRoot,
+                $manifest,
+                $toolchain,
+                $release,
+                $explicitOutput,
+                $output,
+            );
+        }
+
+        $context = (new Schema2ProjectContextFactory())->create(
+            $projectRoot,
+            $manifest,
+            $selected,
+            $toolchain,
+            $profile,
+        );
+
+        return (new Schema2BuildService())->build($context, $output, $explicitOutput);
+    }
+
+    private function buildSchema1(
+        string $projectRoot,
+        Manifest $manifest,
+        ToolchainSelection $toolchain,
+        bool $release,
+        ?string $explicitOutput,
+        OutputInterface $output,
+    ): int {
+        $profile = $release ? 'release' : 'development';
+        if ($explicitOutput !== null) {
+            $artifact = $explicitOutput;
             $directory = dirname($artifact);
             $metadata = null;
         } else {
             $directory = $projectRoot
-                . DIRECTORY_SEPARATOR
-                . 'build'
-                . DIRECTORY_SEPARATOR
-                . $toolchain->identity->target
-                . DIRECTORY_SEPARATOR
-                . $profile;
+                . DIRECTORY_SEPARATOR . 'build'
+                . DIRECTORY_SEPARATOR . $toolchain->identity->target
+                . DIRECTORY_SEPARATOR . $profile;
             $artifact = $directory
-                . DIRECTORY_SEPARATOR
-                . $manifest->name
+                . DIRECTORY_SEPARATOR . $manifest->name
                 . (PHP_OS_FAMILY === 'Windows' ? '.exe' : '');
             $metadata = $directory . DIRECTORY_SEPARATOR . 'build.json';
         }
@@ -76,29 +112,19 @@ final class BuildCommand extends BatonCommand
             $this->removePrevious($metadata);
         }
 
-        $arguments = [
-            'compile',
-            $manifest->entry,
-            '--target',
-            'native',
-        ];
+        $arguments = ['compile', $manifest->entry, '--target', 'native'];
         if ($release) {
             $arguments[] = '--release';
         }
         $arguments[] = '--out';
         $arguments[] = $artifact;
 
-        $compilerAdapter = new CompilerAdapter($toolchain->compilerPath);
-        if ($output instanceof BufferedOutput) {
-            $result = $compilerAdapter->capture($arguments, $projectRoot);
-            $exitCode = $result->exitCode;
-            if ($exitCode !== 0) {
-                fwrite(STDOUT, $result->stdout);
-                fwrite(STDERR, $result->stderr);
-            }
-        } else {
-            $exitCode = $compilerAdapter->passthrough($arguments, $projectRoot);
-        }
+        $exitCode = $this->compiler(
+            new CompilerAdapter($toolchain->compilerPath),
+            $arguments,
+            $projectRoot,
+            $output,
+        );
         if ($exitCode !== 0) {
             $this->removeIfPresent($artifact);
             if ($metadata !== null) {
@@ -138,6 +164,27 @@ final class BuildCommand extends BatonCommand
         }
 
         return 0;
+    }
+
+    /** @param list<string> $arguments */
+    private function compiler(
+        CompilerAdapter $adapter,
+        array $arguments,
+        string $projectRoot,
+        OutputInterface $output,
+    ): int {
+        if (!$output instanceof BufferedOutput) {
+            return $adapter->passthrough($arguments, $projectRoot);
+        }
+        $result = $adapter->capture($arguments, $projectRoot);
+        if ($result->stdout !== '') {
+            $output->write($result->stdout);
+        }
+        if ($result->stderr !== '') {
+            $output->write($result->stderr);
+        }
+
+        return $result->exitCode;
     }
 
     private function absolutePath(string $path, string $base): string

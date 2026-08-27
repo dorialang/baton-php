@@ -1,12 +1,13 @@
 # Phase F Package And Dependency Model
 
 This document records the accepted target contract for Baton's package system.
-It follows Doria Decisions 0117 and 0118. It does not change the executable PHP
-bootstrap.
+It follows Doria Decisions 0117 and 0118. Stage 33 Slice 1 implements the
+manifest, target, discovery, and single-package build-plan portions in the
+executable PHP bootstrap.
 
-## Current Bootstrap Boundary
+## Schema Compatibility And Current Boundary
 
-The current bootstrap reads manifest schema 1 only:
+The bootstrap continues to read historical manifest schema 1 exactly:
 
 ```toml
 manifest-version = 1
@@ -19,11 +20,15 @@ entry = "src/main.doria"
 ```
 
 Schema 1 means one binary, one explicit entry file, no `autoload`, no
-dependencies, no `Baton.lock`, and no workspace. Current project templates and
-commands keep that meaning. The bootstrap does not accept schema 2, resolve or
-fetch packages, generate a lockfile, or discover workspace members.
+dependencies, no `Baton.lock`, and no workspace. It is not reinterpreted.
 
-## Accepted Schema 2 Target
+Stage 33 Slice 1 also accepts strict schema 2 and emits compiler build plans for
+one package. It does not resolve or fetch dependencies, generate a lockfile,
+discover workspaces, execute tests, or run processors. Slice 2 owns dependency
+resolution, lockfiles, cache, offline behavior, and dependency commands. Slice 3
+owns workspaces, tests, and processors.
+
+## Schema 2
 
 ```toml
 manifest-version = 2
@@ -41,24 +46,14 @@ entry = "src/main.doria"
 [autoload-dev.namespaces]
 "Acme\\Blog\\Tests\\" = "tests/"
 
-[dependencies]
-"acme/database" = { path = "../database" }
-
-"acme/http" = {
-    git = "https://code.example.com/acme/http.git",
-    tag = "v1.4.0",
-    version = "^1.4"
-}
-
-[dev-dependencies]
-"acme/test-support" = { path = "../test-support" }
-
-[processors]
-"acme/route-processor" = { path = "../route-processor" }
 ```
 
-Schema 1 is not reinterpreted as schema 2. Any future migration requires
-explicit user action.
+Unscoped local names require explicit `publishable = false` and map to the
+reserved compiler identity `local/<name>`. Scoped `vendor/package` identities
+default to publishable and may opt out. Schema 2 requires strict SemVer and
+edition `"2026"`. Dependency, development-dependency, processor, and workspace
+tables are recognized but diagnosed with their owning future slice rather than
+ignored.
 
 ## Source Discovery
 
@@ -113,13 +108,14 @@ rejected.
 ## Package Identity, Targets, And Access
 
 Publishable identities use lowercase `vendor/package`. Package identity is
-independent of Doria namespace identity. An unscoped name is reserved for an
-explicitly local, non-publishable package; its exact field spelling remains a
-bounded schema-2 implementation item.
+independent of Doria namespace identity. An unscoped name is an explicitly
+local, non-publishable package and uses `publishable = false`.
 
-A package may have at most one library target and zero or more binary targets.
-The common single-binary `kind` and `entry` shorthand remains. Exact additional
-target-table names are settled with schema 2.
+A package may have at most one `[targets.library]` and zero or more
+`[[targets.binary]]` tables. The common single-binary `kind` and `entry`
+shorthand remains and cannot mix with explicit targets. Commands select with
+`--binary <name>` or `--library`; there is no generic `--target` or default
+target field.
 
 Doria `internal` is package-wide, including the package's own development and
 generated sources. It is not workspace-wide. Several packages may contribute
@@ -214,16 +210,16 @@ lockfile, live path dependencies, cached exact remote sources, and valid
 generated inputs. Missing content is reported without version substitution.
 
 The accepted dependency commands are `install`, `add`, `remove`, `update`,
-`fetch`, `tree`, and `why`. They are scheduled package-system commands and are
-not registered by the current PHP bootstrap. Current commands and diagnostics
-remain unchanged.
+`fetch`, `tree`, and `why`. Slice 1 recognizes them only to produce precise
+Slice-2 diagnostics. They perform no resolution, mutation, fetching, caching,
+or lockfile writes.
 
 ## Delivery Sequence
 
-Stage 31 has two compiler slices: namespace/name-resolution foundations, then
-multi-file package graphs and build plans. Stage 32 supplies typed attribute
-metadata and the processor protocol. Stage 33 has three Baton slices: schema 2
-and source inventory; resolver/lock/cache; then workspaces/tests/processors.
+Stages 31 and 32 are complete. Stage 33 Slice 1 is complete: schema 2, source
+inventory, targets, and single-package compiler plans. Stage 33 Slice 2 is next:
+resolver, lockfile, cache, and offline behavior. Slice 3 follows with
+workspaces, tests, and processors. Stage 33 remains in progress, not complete.
 Those slices run in this disposable PHP UX bootstrap to validate and freeze the
 observable contract. Decision 0124 then requires a parity-gated Pre-Stage-45
 port to the clean Doria-native `dorialang/baton` repository, production release

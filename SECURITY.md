@@ -29,6 +29,12 @@ Baton is designed around these boundaries:
 - component paths must remain inside the toolchain root;
 - installed component identities and SHA-256 hashes are verified;
 - project entry paths must remain inside the project root;
+- autoload roots and every discovered source must remain inside the project
+  root after symlink resolution;
+- source paths must use exact filesystem case and remain collision-free under
+  portable ASCII case folding;
+- managed build paths are checked component by component before writes, so an
+  intermediate symlink cannot redirect plans, receipts, or artifacts;
 - project manifests are data and do not execute code;
 - PHP-bootstrap prereleases use an isolated private PHP runtime without user
   configuration or system extensions; production distributions remove that
@@ -50,5 +56,5 @@ directory without modifying handwritten source by default.
 
 Offline mode never reaches the network or substitutes another version. The
 global dependency cache is content-addressed by exact source identity and
-integrity facts. These are accepted target requirements, not claims that the
-schema 1 bootstrap currently resolves or executes dependencies.
+integrity facts. Schema 2 Slice 1 safely discovers the current package and emits
+single-package compiler plans; it does not resolve or execute dependencies.

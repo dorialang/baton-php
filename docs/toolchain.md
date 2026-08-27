@@ -142,3 +142,15 @@ Typical failures use Baton diagnostics:
 | `B0204` | The host or installed toolchain manifest is invalid |
 
 The correction is to install a matching Doria toolchain or provide an exact compatible compiler artifact during development—not to rename an unrelated executable.
+
+## Project build-plan boundary
+
+For manifest schema 2, Baton invokes the selected compiler with a deterministic
+compiler build-plan schema 1. The plan contains the selected package target,
+namespace mappings, source scopes, and source identities; `doriac` still owns
+Doria parsing and semantics. Schema-1 projects keep their historical direct
+`doriac check <entry>` and `doriac compile <entry>` invocation.
+
+The build plan is machine-local and written beneath the selected target's
+managed build directory. It is not `toolchain.json`, `build.json`, or a package
+lockfile. See [Compiler build plans](build-plan.md).

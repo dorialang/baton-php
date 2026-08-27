@@ -82,15 +82,18 @@ Baton PHAR, Composer payload, PHP launcher, or private PHP runtime.
 2. Verify published checksums and component manifests.
 3. Confirm toolchain CalVer, platform, and architecture.
 4. Build the Baton PHAR without development dependencies.
-5. Build the matching isolated PHP runtime from the pinned specification.
-6. Verify the runtime under `-n` and add the platform launcher.
-7. Generate `toolchain.json` with relative component paths.
-8. Calculate and record final component hashes.
-9. Assemble the platform archive with normalized metadata.
-10. Extract it into a clean environment.
-11. Run user commands through the installed launcher.
-12. Verify relocation, offline use, spaces, Unicode, and a read-only toolchain root.
-13. Publish the archive, checksum, provenance, inventories, and test report.
+5. Confirm the PHAR inventory contains the locked TOML parser and SemVer
+   implementation, then run schema-1 and schema-2 project smokes through the
+   PHAR without a source-tree autoloader.
+6. Build the matching isolated PHP runtime from the pinned specification.
+7. Verify the runtime under `-n` and add the platform launcher.
+8. Generate `toolchain.json` with relative component paths.
+9. Calculate and record final component hashes.
+10. Assemble the platform archive with normalized metadata.
+11. Extract it into a clean environment.
+12. Run user commands through the installed launcher.
+13. Verify relocation, offline use, spaces, Unicode, and a read-only toolchain root.
+14. Publish the archive, checksum, provenance, inventories, and test report.
 
 The Baton and runtime artifacts are built with:
 

@@ -40,6 +40,8 @@ also verify their private runtime.
 | `baton build` | Build the current project using the development profile |
 | `baton build --release` | Build an optimized release artifact |
 | `baton run -- [args...]` | Build and run the project, forwarding program arguments |
+| `--binary <name>` | Select a declared binary for `check`, `build`, or `run` |
+| `--library` | Select the declared library for `check` or source-only `build` |
 | `baton doctor` | Report and verify the installed toolchain |
 | `baton version` | Print Baton and compiler versions |
 
@@ -67,18 +69,26 @@ hello-doria/
 The project manifest is deliberately small:
 
 ```toml
-manifest-version = 1
+manifest-version = 2
 
 [package]
 name = "hello-doria"
 version = "0.1.0"
+edition = "2026"
+publishable = false
 kind = "binary"
 entry = "src/main.doria"
+
+[autoload.namespaces]
+"" = "src/"
 ```
 
 Package versions use SemVer. Doria toolchain releases use CalVer, such as `2026.03.1` or `2026.03.1-canary`; the two version domains are independent.
 
-Build artifacts are written beneath `build/<host-target>/<profile>/`. Baton never uses Cargo's `target/` convention for Doria project output.
+Schema-2 build artifacts are written beneath
+`build/<host-target>/<profile>/<target-name>/`. Baton never uses Cargo's
+`target/` convention for Doria project output. Existing schema-1 projects keep
+their historical non-target-scoped layout.
 
 Each profile directory also contains `build.json`, recording the package, package version, toolchain, target, and profile that produced the artifact.
 
@@ -86,12 +96,12 @@ See [Project manifest](docs/project-manifest.md) for the field contract and path
 
 ## Package-system contract
 
-This PHP bootstrap currently executes manifest schema 1 only: one binary entry,
-no autoload, no dependencies, no lockfile, and no workspace. The accepted Phase
-F target introduces schema 2 with compile-time `autoload`, package dependencies,
-deterministic JSON `Baton.lock`, workspaces, explicit processors, a
-content-addressed cache, and offline builds. Those commands and fields are not
-accepted by the bootstrap parser yet.
+Stage 33 Slice 1 implements strict manifest schema 2, compile-time autoload
+discovery, main and development source inventories, explicit package targets,
+target selection, compiler build-plan generation, and target-scoped receipts.
+Schema 1 remains exactly compatible. Dependency tables, `Baton.lock`, package
+fetching, and resolver commands remain stage-gated for Slice 2; workspaces,
+tests, and processors remain stage-gated for Slice 3.
 
 Stage 33 implements and exercises that complete product contract in this
 disposable bootstrap. It does not make PHP Baton's permanent implementation.
@@ -134,6 +144,9 @@ Read [Architecture](docs/architecture.md) for the component and ownership model.
 ## Documentation
 
 - [Project manifest](docs/project-manifest.md)
+- [Package targets](docs/targets.md)
+- [Source discovery](docs/source-discovery.md)
+- [Compiler build plans](docs/build-plan.md)
 - [Phase F package and dependency model](docs/phase-f-package-and-dependency-model.md)
 - [Toolchain discovery and validation](docs/toolchain.md)
 - [Private Baton runtime](docs/runtime.md)

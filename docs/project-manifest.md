@@ -1,8 +1,85 @@
 # Project Manifest
 
-Every Baton project is rooted by a `Baton.toml` file. Baton searches the current directory and each parent directory until it finds that file.
+Every Baton project is rooted by `Baton.toml`. Baton searches the current
+directory and its parents for that file, parses it as inert TOML data, and rejects
+unknown fields.
 
-## Schema 1
+## Schema 2
+
+New local projects use schema 2:
+
+```toml
+manifest-version = 2
+
+[package]
+name = "hello"
+version = "0.1.0"
+edition = "2026"
+publishable = false
+kind = "binary"
+entry = "src/main.doria"
+
+[autoload.namespaces]
+"" = "src/"
+```
+
+An unscoped name is local and must explicitly set `publishable = false`. Its
+compiler identity is `local/<name>`; `local` is reserved as a scoped vendor.
+User-facing output continues to use the manifest name. A scoped
+`vendor/package` name defaults to publishable and may explicitly set either
+publishability value. Package versions are strict SemVer; the required edition
+is the string `"2026"`.
+
+The package-level `kind = "binary"` and `entry` fields are the one-binary
+shorthand. The target name is the final package-name segment. Packages needing
+a library or several binaries use explicit targets instead:
+
+```toml
+[targets.library]
+name = "blog"
+
+[[targets.binary]]
+name = "web"
+entry = "src/web.doria"
+
+[[targets.binary]]
+name = "worker"
+entry = "src/worker.doria"
+```
+
+The shorthand and explicit targets are mutually exclusive. Target names are
+unique lowercase filesystem-safe slugs. There is no default-target field and no
+generic `--target` selector. See [Package targets](targets.md).
+
+## Autoload Mappings
+
+Main and development source roots are explicit:
+
+```toml
+[autoload.namespaces]
+"Acme\\Blog\\" = "src/"
+
+[autoload-dev.namespaces]
+"Acme\\Blog\\Tests\\" = {
+    path = "tests/",
+    include = ["**/*.doria"],
+    exclude = ["**/Fixtures/**"],
+}
+```
+
+The string form uses `include = ["**/*.doria"]` and no exclusions. Prefixes
+use exact PascalCase segments and folded acronyms, end in `\`, and remain
+independent of package identity. The empty prefix maps the root namespace.
+Paths are project-relative and contained. Patterns support only `*`, `?`, and
+`**`; exclude wins.
+
+Ordinary `check`, `build`, and `run` activate main sources only. Development
+sources are still inventoried in the compiler plan but remain inactive until
+Stage 33 Slice 3 orchestration. See [Source discovery](source-discovery.md).
+
+## Schema 1 Compatibility
+
+Existing schema-1 projects retain their exact historical meaning:
 
 ```toml
 manifest-version = 1
@@ -14,88 +91,40 @@ kind = "binary"
 entry = "src/main.doria"
 ```
 
-All five fields are required.
+Schema 1 has one explicit binary entry, no edition, publishability, autoload,
+targets, dependency tables, lockfile semantics, workspace, or processors. It
+continues to invoke `doriac check <entry>` and
+`doriac compile <entry> --target native`; it is never reinterpreted as schema 2.
 
-| Field | Type | Rule |
-| --- | --- | --- |
-| `manifest-version` | integer | Must be `1` |
-| `package.name` | string | Lowercase letters, digits, `-`, and `_`; must begin and end with a letter or digit |
-| `package.version` | string | A SemVer package version |
-| `package.kind` | string | `binary` |
-| `package.entry` | string | A project-relative path contained by the project root |
+## Paths And Versions
 
-Examples of valid package names include `hello`, `hello-doria`, and `tool_2`. Names such as `Hello`, `-tool`, and `tool/cli` are invalid.
+Entry and mapping paths resolve from the directory containing `Baton.toml`.
+They must be relative, use exact filesystem case, remain inside the project
+after symlink resolution, and contain no parent traversal, URL, drive-qualified,
+or absolute spelling. Binary entries must identify readable UTF-8 `.doria`
+files.
 
-## Entry paths
+Package versions use SemVer, such as `1.4.2` or `2.0.0-rc.1`. Doria toolchain
+versions use zero-padded CalVer, such as `2026.03.1-canary`; Baton never compares
+or substitutes these domains.
 
-The entry path is resolved from the directory containing `Baton.toml`, not from the caller's current subdirectory.
+## Build Output
 
-Entry paths must:
-
-- be relative;
-- remain inside the project root;
-- avoid `..` path segments;
-- use an explicit source filename.
-
-Absolute Windows and Unix paths are rejected.
-
-## Version domains
-
-`package.version` is the version of the project and uses SemVer:
+Schema-2 output is target-scoped:
 
 ```text
-1.4.2
-2.0.0-rc.1
+build/<host-target>/<profile>/<target-name>/
+├── <target-name>[.exe]  # binary build only
+├── build-plan.json
+└── build.json           # successful baton build only
 ```
 
-The Doria toolchain uses zero-padded CalVer:
+A library build performs compiler checking and records `"artifact": null`; it
+does not invent an archive. Schema 1 retains
+`build/<host-target>/<profile>/<package>[.exe]` with its historical receipt.
+Failed builds remove stale managed artifacts and receipts. Explicit binary
+`--out` paths remain user-directed and receive no managed receipt.
 
-```text
-2026.03.1
-2026.03.1-canary
-```
-
-These values have different meanings and are never compared.
-
-## Generated project
-
-`baton new hello-doria` creates the manifest, `src/main.doria`, and project ignore rules as one operation. It refuses to overwrite an existing destination.
-
-Project build output belongs under:
-
-```text
-build/<host-target>/development/
-build/<host-target>/release/
-```
-
-Each profile directory contains the package executable and `build.json`:
-
-```json
-{
-    "package": "hello-doria",
-    "packageVersion": "0.1.0",
-    "toolchainVersion": "2026.03.1-canary",
-    "target": "linux-x86_64",
-    "profile": "development"
-}
-```
-
-Development and release builds use separate directories and never overwrite one another. Baton removes the previous artifact before compiling, so a failed build cannot leave an older executable looking current.
-
-`baton run` builds the selected profile into this same layout and executes the newly produced artifact. It never falls back to a previous build after compiler failure.
-
-`toolchain.json` never belongs in a Doria project. It is installed-toolchain metadata, not `Baton.toml` and not a package lockfile.
-
-## Accepted schema 2 target
-
-Schema 2 is the accepted Phase F package format. It adds package identities in
-`vendor/package` form, an edition, compile-time `[autoload.namespaces]` and
-`[autoload-dev.namespaces]` mappings, normal and development dependencies, and
-explicit processors. It is documented in [Phase F package and dependency
-model](phase-f-package-and-dependency-model.md).
-
-The current bootstrap does not parse schema 2. Schema 1 remains one explicit
-binary entry with no autoload, dependency, lockfile, or workspace behavior; it
-will not be reinterpreted silently. Stage 33 adds schema 2 here to exercise and
-freeze the product contract. The Pre-Stage-45 Doria-native port must consume the same
-fixtures and schema without migrating user projects.
+`toolchain.json` is installed-toolchain metadata. `build.json` is a build
+receipt. Neither is `Baton.lock`; dependency resolution and lockfile ownership
+begin in Stage 33 Slice 2.

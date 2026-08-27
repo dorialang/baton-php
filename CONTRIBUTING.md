@@ -45,6 +45,15 @@ composer build:phar
 
 See [Private Baton runtime](docs/runtime.md) for the pinned inputs, native build requirements, isolation checks, generated inventories, and update procedure.
 
+Manifest, target, discovery, and compiler-plan work must also preserve the
+focused contracts in [Project manifest](docs/project-manifest.md), [Package
+targets](docs/targets.md), [Source discovery](docs/source-discovery.md), and
+[Compiler build plans](docs/build-plan.md). Run every repository guard with:
+
+```bash
+for script in scripts/check_*.php; do php "$script"; done
+```
+
 ## Use a compiler during development
 
 Commands that invoke `doriac` accept an explicit compiler artifact:
@@ -80,6 +89,10 @@ distribution, but the unsuffixed `2026.03.1` release may not ship it.
 - Pass process arguments as arrays. Never construct a shell command with interpolated paths or user input.
 - Preserve compiler standard streams and exit codes.
 - Keep project entry paths contained within the project root.
+- Keep autoload roots, discovered sources, generated-source inputs, and managed
+  build writes contained after canonicalization and symlink resolution.
+- Keep schema 1 exact. Schema 2 behavior must use the typed manifest model and
+  shared source-discovery/build-plan services rather than command-local parsing.
 - Treat `Baton.toml` and `toolchain.json` as data, never executable configuration.
 - Keep public mode deterministic: bundled, versioned components take precedence over machine-global tools.
 - Make paths work with spaces, Unicode, Windows separators, relocation, and symlinks.
@@ -91,7 +104,9 @@ Add the smallest test layer that proves the behavior:
 
 - Unit tests for parsing, validation, selection, path handling, and diagnostics.
 - Fake-compiler integration tests for exact arguments, streams, exit codes, and malformed machine output.
-- Real-compiler integration tests against an exact released component artifact.
+- Real-compiler integration tests against an explicitly supplied compiled
+  component artifact (`DORIA_COMPILER=/absolute/path/to/doriac`). Tests must not
+  infer a sibling checkout or invoke Cargo.
 - Distribution tests against extracted archives, not source-tree entry points.
 - Runtime tests with a hostile PHP first on `PATH` and hostile ini environment variables.
 

@@ -35,8 +35,11 @@ Symfony Console provides the command structure. Bootstrap features should normal
 CLI command
     │
     ├── ProjectLocator ── finds Baton.toml
-    │
-    ├── ManifestLoader ── validates project metadata
+    ├── ManifestLoader ── TOML parse + typed schema validation
+    ├── TargetSelector ── resolves one package target
+    ├── SourceDiscovery ── creates one deterministic inventory
+    ├── BuildPlanBuilder ── emits compiler build-plan schema 1
+    ├── BuildLayout ── owns contained target-scoped paths
     │
     ├── ToolchainLocator ── selects and verifies doriac
     │       ├── ToolchainManifest
@@ -57,6 +60,8 @@ Commands such as `doctor` that do not require a project skip project discovery. 
 | `Commands` | Translate command-line input into orchestration steps |
 | `Project` | Locate project roots |
 | `Manifest` | Load and validate `Baton.toml` |
+| `Source` | Discover contained main/development source inventories without parsing Doria |
+| `Build` | Select managed paths and write compiler plans and receipts atomically |
 | `Toolchain` | Discover components and verify identity, target, and hashes |
 | `Compiler` | Start `doriac` safely and preserve process behavior |
 | `Templates` | Generate Baton-owned project scaffolds |
@@ -149,5 +154,8 @@ tests, and production release-ownership transfer to `dorialang/baton`.
 The unsuffixed `2026.03.1` toolchain may not ship before this gate passes.
 
 The accepted target architecture is detailed in [Phase F package and dependency
-model](phase-f-package-and-dependency-model.md). It remains separate from the
-schema 1 bootstrap implementation until its scheduled delivery.
+model](phase-f-package-and-dependency-model.md). Stage 33 Slice 1 now implements
+schema 2 single-package manifests, targets, source discovery, compiler plans,
+and receipts while retaining exact schema-1 behavior. Dependency resolution and
+lockfiles remain Slice 2; workspaces, tests, processors, and generated-source
+writes remain Slice 3.

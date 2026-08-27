@@ -51,7 +51,10 @@ The extension set is intentionally small:
 | zlib | Required by the statically linked PHAR extension |
 | pcntl and posix | Signal handling on Linux and macOS |
 
-JSON, hashing, filesystem operations, and process execution are core capabilities in this build. No TOML extension is needed because Baton uses its own constrained manifest loader.
+JSON, hashing, filesystem operations, and process execution are core capabilities
+in this build. Manifest schema 2 uses the packaged pure-PHP
+`php-collective/toml` parser, and package versions use packaged
+`composer/semver`; neither requires another PHP extension.
 
 The build verifies every downloaded source and builder asset by SHA-256, probes the finished executable under `-n`, and records the binary hash, sources, extensions, capabilities, and licence paths in `runtime.json`.
 
@@ -87,7 +90,10 @@ build/baton-dependencies.json
 build/LICENSES/composer/
 ```
 
-The PHAR uses a SHA-256 signature and contains Baton's source, templates, and production dependencies only. `baton-dependencies.json` records every included Composer package and its copied licence notices.
+The PHAR uses a SHA-256 signature and contains Baton's source, templates, and
+production dependencies only, including the TOML and SemVer libraries required
+to load schema-2 projects without system Composer. `baton-dependencies.json`
+records every included Composer package and its copied licence notices.
 
 ## Build a private runtime
 
