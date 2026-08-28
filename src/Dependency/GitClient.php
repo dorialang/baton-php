@@ -228,7 +228,14 @@ final class GitClient implements GitTransport
             'GIT_CONFIG_GLOBAL' => $cache->emptyGitConfig(),
             'GIT_LFS_SKIP_SMUDGE' => '1',
         ];
-        $command = [$git, '-c', 'core.hooksPath=' . $this->emptyHooks($cache), ...$arguments];
+        $command = [
+            $git,
+            '-c',
+            'core.longPaths=true',
+            '-c',
+            'core.hooksPath=' . $this->emptyHooks($cache),
+            ...$arguments,
+        ];
         try {
             $process = new Process($command, $workingDirectory, $environment, timeout: 120);
             $process->run();
