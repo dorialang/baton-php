@@ -33,7 +33,7 @@ final class DependencyCacheTest extends TestCase
             (new CacheRootLocator(['HOME' => '/Users/test'], 'Darwin'))->locate(),
         );
         self::assertSame(
-            'C:\\Users\\test\\AppData\\Local' . DIRECTORY_SEPARATOR . 'Doria' . DIRECTORY_SEPARATOR . 'Baton' . DIRECTORY_SEPARATOR . 'Cache',
+            'C:\\Users\\test\\AppData\\Local\\Doria\\Baton\\Cache',
             (new CacheRootLocator(['LOCALAPPDATA' => 'C:\\Users\\test\\AppData\\Local'], 'Windows'))->locate(),
         );
     }
@@ -58,8 +58,11 @@ final class DependencyCacheTest extends TestCase
         $cache = new DependencyCache('/cache');
         $url = 'https://example.com/acme/package.git';
         $commit = str_repeat('a', 40);
-        self::assertSame('/cache/mirrors/' . hash('sha256', $url), $cache->mirror($url));
-        self::assertSame('/cache/checkouts/' . hash('sha256', $url) . '/' . $commit, $cache->checkout($url, $commit));
+        self::assertSame('/cache' . DIRECTORY_SEPARATOR . 'mirrors' . DIRECTORY_SEPARATOR . hash('sha256', $url), $cache->mirror($url));
+        self::assertSame(
+            '/cache' . DIRECTORY_SEPARATOR . 'checkouts' . DIRECTORY_SEPARATOR . hash('sha256', $url) . DIRECTORY_SEPARATOR . $commit,
+            $cache->checkout($url, $commit),
+        );
         self::assertStringNotContainsString('acme/package', $cache->checkout($url, $commit));
     }
 
@@ -121,24 +124,36 @@ final class DependencyCacheTest extends TestCase
 
         $cache = new DependencyCache($workspace . '/cache');
         $client = new GitClient($git);
-        $source = new GitDependencySource($repository, GitSelector::parse('rev', $commit));
+        $repositoryUrl = $this->localGitUrl($repository);
+        $source = new GitDependencySource($repositoryUrl, GitSelector::parse('rev', $commit));
         $resolved = $client->resolve($source, NetworkPolicy::Online, $cache, true);
-        $checkout = $client->checkout($repository, $resolved, NetworkPolicy::Online, $cache);
+        $checkout = $client->checkout($repositoryUrl, $resolved, NetworkPolicy::Online, $cache);
         $markerTime = filemtime($checkout . '/.baton-cache.json');
-        self::assertSame($checkout, $client->checkout($repository, $resolved, NetworkPolicy::Offline, $cache));
+        self::assertSame($checkout, $client->checkout($repositoryUrl, $resolved, NetworkPolicy::Offline, $cache));
         self::assertSame($markerTime, filemtime($checkout . '/.baton-cache.json'));
 
         self::assertTrue(chmod($checkout . '/src', 0o755));
         self::assertTrue(chmod($checkout . '/src/Library.doria', 0o644));
         self::assertNotFalse(file_put_contents($checkout . '/src/Library.doria', 'corrupt'));
         try {
-            $client->checkout($repository, $resolved, NetworkPolicy::Offline, $cache);
+            $client->checkout($repositoryUrl, $resolved, NetworkPolicy::Offline, $cache);
             self::fail('Offline corruption should fail.');
         } catch (BatonError $error) {
             self::assertSame('Dependency Cache Entry Is Corrupt', $error->heading);
         }
-        $rebuilt = $client->checkout($repository, $resolved, NetworkPolicy::Online, $cache);
+        $rebuilt = $client->checkout($repositoryUrl, $resolved, NetworkPolicy::Online, $cache);
         self::assertStringContainsString('return 42', (string) file_get_contents($rebuilt . '/src/Library.doria'));
+    }
+
+    private function localGitUrl(string $path): string
+    {
+        $normalized = str_replace('\\', '/', $path);
+        $segments = array_map('rawurlencode', explode('/', $normalized));
+        if (preg_match('/^[A-Za-z]:\//', $normalized) === 1) {
+            $segments[0] = substr($normalized, 0, 2);
+        }
+
+        return 'file://' . (str_starts_with($normalized, '/') ? '' : '/') . implode('/', $segments);
     }
 
     /** @param list<string> $arguments */

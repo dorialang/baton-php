@@ -17,14 +17,15 @@ final readonly class CacheRootLocator
 
     public function locate(): string
     {
+        $separator = $this->osFamily === 'Windows' ? '\\' : '/';
         if ($this->osFamily === 'Windows') {
             $root = $this->value('LOCALAPPDATA');
             if ($root === null) {
                 throw $this->missing();
             }
 
-            return $root . DIRECTORY_SEPARATOR . 'Doria' . DIRECTORY_SEPARATOR . 'Baton'
-                . DIRECTORY_SEPARATOR . 'Cache';
+            return $root . $separator . 'Doria' . $separator . 'Baton'
+                . $separator . 'Cache';
         }
 
         $home = $this->value('HOME');
@@ -33,8 +34,8 @@ final readonly class CacheRootLocator
                 throw $this->missing();
             }
 
-            return $home . DIRECTORY_SEPARATOR . 'Library' . DIRECTORY_SEPARATOR . 'Caches'
-                . DIRECTORY_SEPARATOR . 'Doria' . DIRECTORY_SEPARATOR . 'Baton';
+            return $home . $separator . 'Library' . $separator . 'Caches'
+                . $separator . 'Doria' . $separator . 'Baton';
         }
 
         $xdg = $this->value('XDG_CACHE_HOME');
@@ -47,14 +48,14 @@ final readonly class CacheRootLocator
                 );
             }
 
-            return $xdg . DIRECTORY_SEPARATOR . 'doria' . DIRECTORY_SEPARATOR . 'baton';
+            return $xdg . $separator . 'doria' . $separator . 'baton';
         }
         if ($home === null) {
             throw $this->missing();
         }
 
-        return $home . DIRECTORY_SEPARATOR . '.cache' . DIRECTORY_SEPARATOR . 'doria'
-            . DIRECTORY_SEPARATOR . 'baton';
+        return $home . $separator . '.cache' . $separator . 'doria'
+            . $separator . 'baton';
     }
 
     private function value(string $name): ?string
