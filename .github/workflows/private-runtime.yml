@@ -87,7 +87,8 @@ jobs:
 
       - name: Smoke-test Stage 33 Slice 2 with only the private runtime
         shell: bash
-        run: "${{ matrix.executable }}" -n scripts/smoke_stage33_slice2_phar.php build/baton.phar
+        run: |
+          "${{ matrix.executable }}" -n scripts/smoke_stage33_slice2_phar.php build/baton.phar
 
       - name: Upload runtime audit artifact
         uses: actions/upload-artifact@v4
