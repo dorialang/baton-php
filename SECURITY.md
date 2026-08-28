@@ -46,8 +46,8 @@ Changes that weaken one of these boundaries require explicit security review and
 
 ## Accepted package-system threat model
 
-The future package resolver preserves the same inert-data boundary. Dependency
-and processor sources are explicit and exactly locked; remote lock entries keep
+The package resolver preserves the same inert-data boundary. Dependency sources
+are explicit and exactly locked; remote lock entries keep
 canonical source URLs but never credentials, tokens, or secret query
 parameters. Conflicting sources for one package identity are diagnosed.
 Arbitrary archive URLs and implicit build scripts are rejected. Processors are
@@ -56,5 +56,8 @@ directory without modifying handwritten source by default.
 
 Offline mode never reaches the network or substitutes another version. The
 global dependency cache is content-addressed by exact source identity and
-integrity facts. Schema 2 Slice 1 safely discovers the current package and emits
-single-package compiler plans; it does not resolve or execute dependencies.
+integrity facts. Git runs non-interactively with isolated configuration,
+disabled hooks and filters, no submodules, sanitized failures, immutable exact
+checkouts, and symlink-contained cache writes. Baton resolves manifests and
+source inventories but never executes dependency source. Processors remain
+deferred to Slice 3.

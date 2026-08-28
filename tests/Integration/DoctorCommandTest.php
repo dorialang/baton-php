@@ -40,7 +40,9 @@ final class DoctorCommandTest extends TestCase
         self::assertStringContainsString('WARNING  doria-lsp', $result['stdout']);
         self::assertStringContainsString('WARNING  private PHP runtime', $result['stdout']);
         self::assertStringContainsString('WARNING  build location', $result['stdout']);
-        self::assertStringContainsString('cache location', $result['stdout']);
+        self::assertStringContainsString('dependency cache', $result['stdout']);
+        self::assertStringContainsString('Git executable', $result['stdout']);
+        self::assertStringContainsString('offline policy', $result['stdout']);
     }
 
     public function testDoctorChecksTheCurrentProjectBuildLocation(): void
@@ -94,7 +96,7 @@ TOML,
             '[B0202] Doria Compiler Not Found',
             $result['stdout'],
         );
-        self::assertStringContainsString('cache location', $result['stdout']);
+        self::assertStringContainsString('dependency cache', $result['stdout']);
     }
 
     private function writeFakeCompiler(string $root): string

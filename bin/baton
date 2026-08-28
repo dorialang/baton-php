@@ -4,7 +4,8 @@
 declare(strict_types=1);
 
 use Doria\Baton\Application;
+use Doria\Baton\Console\BatonArgvInput;
 
 require __DIR__ . '/../vendor/autoload.php';
 
-exit(Application::create()->run());
+exit(Application::create()->run(new BatonArgvInput()));

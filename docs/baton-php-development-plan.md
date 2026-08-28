@@ -1302,13 +1302,14 @@ Schema 2, exact schema-1 compatibility, compile-time `autoload`, source scopes,
 targets, deterministic single-package compiler build plans, target-scoped build
 layouts, and receipts are implemented.
 
-### Stage 33 Slice 2 - Next
+### Stage 33 Slice 2 - Complete
 
 Path and Git resolution, SemVer constraint solving, one-version conflict
 reporting, deterministic JSON `Baton.lock`, dependency commands, the global
-content-addressed cache, and offline resolution land next.
+content-addressed cache, offline resolution, multi-package compiler plans, and
+dependency-aware receipts are implemented.
 
-### Stage 33 Slice 3 - Pending
+### Stage 33 Slice 3 - Next
 
 Workspaces, development dependencies, graph commands, incremental inventory,
 `baton test`, explicit processor orchestration, generated-source writes, and
@@ -1368,10 +1369,12 @@ The resolver must leave room for:
 
 It must not assume every dependency is pure, target-independent Doria source.
 
-The current PHP bootstrap accepts exact schema 1 and strict schema 2
-single-package projects. Dependency commands are recognized only to report the
-Slice-2 boundary; they do not resolve, fetch, cache, or write `Baton.lock`.
-Workspace, test, and processor behavior remains inert until Slice 3.
+The current PHP bootstrap accepts exact schema 1 and strict schema 2 projects.
+It resolves normal path and Git dependency graphs, validates and writes
+`Baton.lock`, supports exact cached and offline installs, and emits
+multi-package compiler plans. Workspace, development-dependency, graph-command,
+test, processor, and generated-source-write behavior remains inert until Slice
+3.
 
 ### Stage 33 Acceptance Criterion
 

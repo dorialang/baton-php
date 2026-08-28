@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace Doria\Baton\Build;
 
+use Doria\Baton\Dependency\DependencyResolver;
+use Doria\Baton\Dependency\LockFileStore;
+use Doria\Baton\Dependency\ManifestFingerprint;
+use Doria\Baton\Dependency\NetworkPolicy;
+use Doria\Baton\Dependency\ResolvedDependencyGraph;
 use Doria\Baton\Manifest\Schema2Manifest;
 use Doria\Baton\Manifest\SelectedPackageTarget;
 use Doria\Baton\Source\GeneratedSourceInput;
@@ -22,6 +27,7 @@ final class Schema2ProjectContextFactory
         ToolchainSelection $toolchain,
         string $profile,
         array $generatedSources = [],
+        NetworkPolicy $network = NetworkPolicy::Online,
     ): Schema2ProjectContext {
         $canonicalRoot = realpath($projectRoot);
         if ($canonicalRoot === false) {
@@ -32,6 +38,36 @@ final class Schema2ProjectContextFactory
             $selected,
             $generatedSources,
         );
+        $locks = new LockFileStore();
+        $lock = $locks->load($canonicalRoot);
+        if ($manifest->dependencies !== [] && $lock === null) {
+            $lock = $locks->require($canonicalRoot);
+        }
+        if ($lock === null) {
+            $graph = new ResolvedDependencyGraph(
+                $canonicalRoot,
+                $manifest,
+                (new ManifestFingerprint())->calculate($manifest),
+                [],
+            );
+            $lockSha256 = null;
+        } else {
+            $graph = (new DependencyResolver())->resolveLocked(
+                $canonicalRoot,
+                $manifest,
+                $lock,
+                $network,
+            );
+            $lockPath = $canonicalRoot . DIRECTORY_SEPARATOR . LockFileStore::FILE;
+            $lockSha256 = hash_file('sha256', $lockPath);
+            if (!is_string($lockSha256)) {
+                throw new \Doria\Baton\Diagnostics\BatonError(
+                    'B0372',
+                    'Baton Lock Is Invalid',
+                    "Baton.lock could not be hashed:\n    {$lockPath}",
+                );
+            }
+        }
         $layout = new BuildLayout(
             $canonicalRoot,
             $toolchain->identity->target,
@@ -44,6 +80,7 @@ final class Schema2ProjectContextFactory
             $selected,
             $inventory,
             $profile === 'release' ? 'release' : 'fast',
+            $graph,
         );
         $written = (new BuildPlanWriter())->write($plan, $layout->buildPlan);
 
@@ -52,6 +89,8 @@ final class Schema2ProjectContextFactory
             $manifest,
             $selected,
             $inventory,
+            $graph,
+            $lockSha256,
             $toolchain,
             $profile,
             $layout,

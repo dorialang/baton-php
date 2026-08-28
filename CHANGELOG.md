@@ -30,6 +30,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Dor
 - Deterministic compiler discovery, machine-readable identity checks, host validation, and installed-component hash verification.
 - `baton doctor` and `baton version` toolchain reporting.
 - Cross-platform PHPUnit, PHPStan, and CI coverage.
+- Normal path and Git dependencies with strict SemVer constraints, one-version
+  graph resolution, source-substitution and cycle diagnostics.
+- Deterministic `Baton.lock`, exact Git pinning, a global content-addressed cache,
+  centralized offline operation, and transactional `install`, `add`, `remove`,
+  `update`, and `fetch` workflows.
+- Multi-package compiler plans and lock/path identity in build receipts.
 
 ### Changed
 
@@ -39,6 +45,5 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Dor
 
 ### Deferred
 
-- Dependency resolution, `Baton.lock`, and package-cache commands remain in
-  Stage 33 Slice 2. Workspaces, tests, processors, and generated-source writes
-  remain in Stage 33 Slice 3.
+- Workspaces, development dependencies, tests, processors, graph commands, and
+  generated-source writes remain in Stage 33 Slice 3.

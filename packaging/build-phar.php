@@ -63,7 +63,7 @@ Phar::mapPhar('baton.phar');
 
 require 'phar://baton.phar/vendor/autoload.php';
 
-exit(Doria\Baton\Application::create()->run());
+exit(Doria\Baton\Application::create()->run(new Doria\Baton\Console\BatonArgvInput()));
 
 __HALT_COMPILER();
 PHP);

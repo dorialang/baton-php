@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Doria\Baton\Commands;
 
 use Doria\Baton\Application;
+use Doria\Baton\Dependency\CacheRootLocator;
+use Doria\Baton\Dependency\GitClient;
 use Doria\Baton\Diagnostics\BatonError;
 use Doria\Baton\Project\ProjectLocator;
 use Doria\Baton\Toolchain\Platform;
@@ -108,13 +110,26 @@ final class DoctorCommand extends BatonCommand
             );
         }
 
-        $cachePath = $this->cachePath();
-        if ($cachePath === null) {
-            $this->line($output, 'WARNING', 'cache location', 'could not be determined');
-        } else {
+        try {
+            $cachePath = (new CacheRootLocator())->locate();
             $cacheStatus = $this->canCreateOrWrite($cachePath) ? 'PASS' : 'FAIL';
-            $this->line($output, $cacheStatus, 'cache location', $cachePath);
+            $this->line($output, $cacheStatus, 'dependency cache', $cachePath);
             $failed = $failed || $cacheStatus === 'FAIL';
+        } catch (BatonError) {
+            $this->line($output, 'WARNING', 'dependency cache', 'could not be determined');
+        }
+        $git = new GitClient();
+        $gitPath = $git->executable();
+        $this->line($output, $gitPath === null ? 'WARNING' : 'PASS', 'Git executable', $gitPath ?? 'not found (path-only projects remain usable)');
+        $this->line($output, $gitPath === null ? 'WARNING' : 'PASS', 'Git version', $git->version() ?? 'not available');
+        $this->line($output, 'PASS', 'offline policy', 'selected per invocation');
+
+        try {
+            $projectRoot = (new ProjectLocator())->locate(getcwd() ?: '.');
+            $lockPath = $projectRoot . DIRECTORY_SEPARATOR . 'Baton.lock';
+            $this->line($output, 'PASS', 'Baton.lock', is_file($lockPath) ? 'present' : 'absent');
+        } catch (BatonError) {
+            $this->line($output, 'WARNING', 'Baton.lock', 'not checked outside a Baton project');
         }
 
         return $failed ? Command::FAILURE : Command::SUCCESS;
@@ -190,35 +205,4 @@ final class DoctorCommand extends BatonCommand
         return is_dir($parent) && is_writable($parent);
     }
 
-    private function cachePath(): ?string
-    {
-        if (PHP_OS_FAMILY === 'Windows') {
-            $root = getenv('LOCALAPPDATA');
-
-            return is_string($root) && $root !== ''
-                ? $root . DIRECTORY_SEPARATOR . 'Doria' . DIRECTORY_SEPARATOR . 'cache'
-                : null;
-        }
-
-        $home = getenv('HOME');
-        if (!is_string($home) || $home === '') {
-            return null;
-        }
-        if (PHP_OS_FAMILY === 'Darwin') {
-            return $home
-                . DIRECTORY_SEPARATOR
-                . 'Library'
-                . DIRECTORY_SEPARATOR
-                . 'Caches'
-                . DIRECTORY_SEPARATOR
-                . 'Doria';
-        }
-
-        $root = getenv('XDG_CACHE_HOME');
-        if (!is_string($root) || $root === '') {
-            $root = $home . DIRECTORY_SEPARATOR . '.cache';
-        }
-
-        return $root . DIRECTORY_SEPARATOR . 'doria';
-    }
 }

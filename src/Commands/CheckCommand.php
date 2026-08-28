@@ -24,6 +24,7 @@ final class CheckCommand extends BatonCommand
     {
         TargetOptions::configure($this);
         CompilerOptions::configure($this);
+        DependencyOptions::configureOffline($this);
     }
 
     protected function handle(InputInterface $input, OutputInterface $output): int
@@ -46,6 +47,7 @@ final class CheckCommand extends BatonCommand
             $selected,
             $toolchain,
             'development',
+            network: DependencyOptions::network($input),
         );
 
         return (new CompilerAdapter($toolchain->compilerPath))->passthrough(

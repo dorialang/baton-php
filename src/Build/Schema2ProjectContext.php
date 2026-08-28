@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Doria\Baton\Build;
 
+use Doria\Baton\Dependency\ResolvedDependencyGraph;
 use Doria\Baton\Manifest\Schema2Manifest;
 use Doria\Baton\Manifest\SelectedPackageTarget;
 use Doria\Baton\Source\SourceInventory;
@@ -16,6 +17,8 @@ final readonly class Schema2ProjectContext
         public Schema2Manifest $manifest,
         public SelectedPackageTarget $selected,
         public SourceInventory $inventory,
+        public ResolvedDependencyGraph $graph,
+        public ?string $lockSha256,
         public ToolchainSelection $toolchain,
         public string $profile,
         public BuildLayout $layout,

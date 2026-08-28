@@ -77,6 +77,22 @@ Ordinary `check`, `build`, and `run` activate main sources only. Development
 sources are still inventoried in the compiler plan but remain inactive until
 Stage 33 Slice 3 orchestration. See [Source discovery](source-discovery.md).
 
+## Normal Dependencies
+
+Schema 2 accepts `[dependencies]` entries with exactly one `path` or `git`
+source. Git entries require exactly one `rev`, `tag`, or `branch`; either source
+may add a `version` constraint. Dependency keys identify the package declared by
+the dependency manifest, and every dependency package requires a library target.
+
+```toml
+[dependencies]
+"acme/core" = { path = "../core", version = "^1.0" }
+"acme/log" = { git = "ssh://git@github.com/acme/log.git", rev = "7de4..." }
+```
+
+See [Dependencies](dependencies.md) for source, constraint, and command rules.
+Development dependencies, processors, and workspaces remain Slice 3 fields.
+
 ## Schema 1 Compatibility
 
 Existing schema-1 projects retain their exact historical meaning:
@@ -126,5 +142,5 @@ Failed builds remove stale managed artifacts and receipts. Explicit binary
 `--out` paths remain user-directed and receive no managed receipt.
 
 `toolchain.json` is installed-toolchain metadata. `build.json` is a build
-receipt. Neither is `Baton.lock`; dependency resolution and lockfile ownership
-begin in Stage 33 Slice 2.
+receipt. `Baton.lock` separately records the exact dependency graph and is
+described in [Lockfile](lockfile.md).

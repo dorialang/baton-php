@@ -129,6 +129,17 @@ abstract class TestCase extends PHPUnitTestCase
             return;
         }
 
+        chmod($directory, 0o755);
+        /** @var iterable<SplFileInfo> $permissions */
+        $permissions = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($directory, FilesystemIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::SELF_FIRST,
+        );
+        foreach ($permissions as $entry) {
+            if (!$entry->isLink()) {
+                chmod($entry->getPathname(), $entry->isDir() ? 0o755 : 0o644);
+            }
+        }
         /** @var iterable<SplFileInfo> $entries */
         $entries = new RecursiveIteratorIterator(
             new RecursiveDirectoryIterator($directory, FilesystemIterator::SKIP_DOTS),

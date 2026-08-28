@@ -39,7 +39,7 @@ $readme = $read($readmePath);
 $require($modelPath, $model, [
     'The bootstrap continues to read historical manifest schema 1 exactly',
     'Schema 1 means one binary, one explicit entry file',
-    'Stage 33 Slice 1 also accepts strict schema 2',
+    'Stage 33 Slice 1 accepts strict schema 2',
     'manifest-version = 2',
     '[autoload.namespaces]',
     '[autoload-dev.namespaces]',
@@ -51,21 +51,23 @@ $require($modelPath, $model, [
     '`doriac` owns Doria parsing',
     'Baton does not parse Doria declarations',
     'Transitive dependencies are not',
-    'one version per `vendor/package` identity',
-    'package dependency cycle',
+    'one version per package identity',
+    'normal dependency cycle',
     'first source transports are path and Git',
     'always records the exact commit',
     'Packages use SemVer',
     '`Baton.lock` is deterministic, machine-generated JSON',
-    'commit one lockfile at the workspace',
+    'commit the project-root lockfile',
     'build-plan facts belong in a versioned',
     'one shared dependency cache',
     'Processors are explicit',
     'No package-defined arbitrary build scripts',
     'global content-addressed cache',
-    'Offline install/check/build/run/test never reaches the network',
+    'Offline install/check/build/run never reaches the network',
     'Stage 33 Slice 1 is complete',
-    'Stage 33 Slice 2 is next',
+    'Stage 33 Slice 2 is',
+    'complete: normal dependency resolution',
+    'Slice 3 is next',
     'Stage 33 remains in progress, not complete',
 ]);
 
@@ -81,8 +83,8 @@ $require($architecturePath, $architecture, [
 ]);
 $require($developmentPath, $development, [
     '### Stage 33 Slice 1 - Complete',
-    '### Stage 33 Slice 2 - Next',
-    '### Stage 33 Slice 3 - Pending',
+    '### Stage 33 Slice 2 - Complete',
+    '### Stage 33 Slice 3 - Next',
     'Stage 33 is in progress, not complete',
 ]);
 $require($securityPath, $security, [
@@ -90,9 +92,9 @@ $require($securityPath, $security, [
     'Offline mode never reaches the network',
 ]);
 $require($readmePath, $readme, [
-    'Stage 33 Slice 1 implements strict manifest schema 2',
+    'Stage 33 Slices 1 and 2 implement strict manifest schema 2',
     'Schema 1 remains exactly compatible',
-    'Dependency tables, `Baton.lock`, package',
+    'path and Git dependency resolution',
 ]);
 
 if (is_file($root . '/Baton.lock')) {

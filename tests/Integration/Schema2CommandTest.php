@@ -134,7 +134,7 @@ final class Schema2CommandTest extends TestCase
         self::assertSame(1, (int) file_get_contents($root . '/compiler-call-count'));
     }
 
-    public function testNewAndStageGatedCommandsExposeOnlyImplementedSliceOneBehavior(): void
+    public function testNewAndDependencyCommandsExposeSliceTwoWhileGraphCommandsRemainDeferred(): void
     {
         $root = $this->temporaryDirectory('new schema2');
         $new = $this->runBaton(['new', 'hello'], $root);
@@ -146,11 +146,25 @@ final class Schema2CommandTest extends TestCase
         self::assertStringContainsString('"" = "src/"', $manifest);
         self::assertFileDoesNotExist($root . '/hello/Baton.lock');
 
-        foreach (['install', 'add', 'remove', 'update', 'fetch', 'tree', 'why'] as $command) {
+        $install = $this->runBaton(['install'], $root . '/hello');
+        self::assertSame(0, $install['exitCode'], $install['stderr']);
+        self::assertFileExists($root . '/hello/Baton.lock');
+        $lock = json_decode(
+            (string) file_get_contents($root . '/hello/Baton.lock'),
+            true,
+            flags: JSON_THROW_ON_ERROR,
+        );
+        self::assertIsArray($lock);
+        self::assertSame([], $lock['packages']);
+        $update = $this->runBaton(['update'], $root . '/hello');
+        self::assertSame(0, $update['exitCode'], $update['stderr']);
+        self::assertFileExists($root . '/hello/Baton.lock');
+        $fetch = $this->runBaton(['fetch'], $root . '/hello');
+        self::assertSame(0, $fetch['exitCode'], $fetch['stderr']);
+        foreach (['tree', 'why'] as $command) {
             $result = $this->runBaton([$command], $root . '/hello');
             self::assertSame(1, $result['exitCode']);
-            self::assertStringContainsString('Stage 33 Slice 2', $result['stderr']);
-            self::assertFileDoesNotExist($root . '/hello/Baton.lock');
+            self::assertStringContainsString('Stage 33 Slice 3', $result['stderr']);
         }
         $test = $this->runBaton(['test'], $root . '/hello');
         self::assertStringContainsString('#[Test] metadata is available', $test['stderr']);

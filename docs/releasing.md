@@ -84,7 +84,9 @@ Baton PHAR, Composer payload, PHP launcher, or private PHP runtime.
 4. Build the Baton PHAR without development dependencies.
 5. Confirm the PHAR inventory contains the locked TOML parser and SemVer
    implementation, then run schema-1 and schema-2 project smokes through the
-   PHAR without a source-tree autoloader.
+   PHAR without a source-tree autoloader. Include dependency-command
+   registration, path install and lock parsing, multi-package plan generation,
+   and offline missing-cache diagnostics.
 6. Build the matching isolated PHP runtime from the pinned specification.
 7. Verify the runtime under `-n` and add the platform launcher.
 8. Generate `toolchain.json` with relative component paths.
@@ -94,6 +96,11 @@ Baton PHAR, Composer payload, PHP launcher, or private PHP runtime.
 12. Run user commands through the installed launcher.
 13. Verify relocation, offline use, spaces, Unicode, and a read-only toolchain root.
 14. Publish the archive, checksum, provenance, inventories, and test report.
+
+Git is an external executable only for Git dependency acquisition. A release
+must prove path-only projects work without Git and that Git dependencies use
+noninteractive exact commits in the user-scoped cache rather than a project
+`vendor/` directory.
 
 The Baton and runtime artifacts are built with:
 

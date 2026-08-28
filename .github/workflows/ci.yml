@@ -47,3 +47,6 @@ jobs:
 
       - name: Smoke-test Stage 33 Slice 1 through the production PHAR
         run: composer smoke:phar:stage33-slice1
+
+      - name: Smoke-test Stage 33 Slice 2 through the production PHAR
+        run: composer smoke:phar:stage33-slice2

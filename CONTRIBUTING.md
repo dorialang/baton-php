@@ -48,7 +48,10 @@ See [Private Baton runtime](docs/runtime.md) for the pinned inputs, native build
 Manifest, target, discovery, and compiler-plan work must also preserve the
 focused contracts in [Project manifest](docs/project-manifest.md), [Package
 targets](docs/targets.md), [Source discovery](docs/source-discovery.md), and
-[Compiler build plans](docs/build-plan.md). Run every repository guard with:
+[Compiler build plans](docs/build-plan.md). Dependency work must also preserve
+[Dependencies](docs/dependencies.md), [Lockfile](docs/lockfile.md), [Dependency
+cache](docs/dependency-cache.md), and [Offline operation](docs/offline.md). Run
+every repository guard with:
 
 ```bash
 for script in scripts/check_*.php; do php "$script"; done
@@ -94,6 +97,10 @@ distribution, but the unsuffixed `2026.03.1` release may not ship it.
 - Keep schema 1 exact. Schema 2 behavior must use the typed manifest model and
   shared source-discovery/build-plan services rather than command-local parsing.
 - Treat `Baton.toml` and `toolchain.json` as data, never executable configuration.
+- Treat `Baton.lock` as strict generated data. Never silently update it from
+  check, build, run, or fetch.
+- Keep Git non-interactive and isolated from user configuration, hooks, filters,
+  submodules, credentials, and shell interpolation.
 - Keep public mode deterministic: bundled, versioned components take precedence over machine-global tools.
 - Make paths work with spaces, Unicode, Windows separators, relocation, and symlinks.
 - Do not introduce source-tree coupling between Doria repositories.

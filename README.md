@@ -40,6 +40,11 @@ also verify their private runtime.
 | `baton build` | Build the current project using the development profile |
 | `baton build --release` | Build an optimized release artifact |
 | `baton run -- [args...]` | Build and run the project, forwarding program arguments |
+| `baton install` | Install the exact locked dependency graph, or create its first lock |
+| `baton add <package> ...` | Add and lock a normal path or Git dependency |
+| `baton remove <package>` | Remove a direct normal dependency and update the lock |
+| `baton update [package ...]` | Deliberately refresh all or selected dependency resolutions |
+| `baton fetch [package ...]` | Acquire exact locked content without editing project files |
 | `--binary <name>` | Select a declared binary for `check`, `build`, or `run` |
 | `--library` | Select the declared library for `check` or source-only `build` |
 | `baton doctor` | Report and verify the installed toolchain |
@@ -96,12 +101,12 @@ See [Project manifest](docs/project-manifest.md) for the field contract and path
 
 ## Package-system contract
 
-Stage 33 Slice 1 implements strict manifest schema 2, compile-time autoload
-discovery, main and development source inventories, explicit package targets,
-target selection, compiler build-plan generation, and target-scoped receipts.
-Schema 1 remains exactly compatible. Dependency tables, `Baton.lock`, package
-fetching, and resolver commands remain stage-gated for Slice 2; workspaces,
-tests, and processors remain stage-gated for Slice 3.
+Stage 33 Slices 1 and 2 implement strict manifest schema 2, compile-time source
+discovery, explicit targets, path and Git dependency resolution, deterministic
+`Baton.lock`, a global exact-Git cache, offline operation, multi-package compiler
+plans, and lock-aware receipts. Schema 1 remains exactly compatible. Workspaces,
+development dependencies, tests, processors, `tree`, and `why` remain Stage 33
+Slice 3 work; Stage 33 is not yet complete.
 
 Stage 33 implements and exercises that complete product contract in this
 disposable bootstrap. It does not make PHP Baton's permanent implementation.
@@ -147,6 +152,10 @@ Read [Architecture](docs/architecture.md) for the component and ownership model.
 - [Package targets](docs/targets.md)
 - [Source discovery](docs/source-discovery.md)
 - [Compiler build plans](docs/build-plan.md)
+- [Dependencies](docs/dependencies.md)
+- [Lockfile](docs/lockfile.md)
+- [Dependency cache](docs/dependency-cache.md)
+- [Offline operation](docs/offline.md)
 - [Phase F package and dependency model](docs/phase-f-package-and-dependency-model.md)
 - [Toolchain discovery and validation](docs/toolchain.md)
 - [Private Baton runtime](docs/runtime.md)

@@ -73,9 +73,9 @@ $require($loaderPath, $loader, [
     'targets.binary',
     "autoloadMappings(\$values, 'autoload', 'main')",
     "autoloadMappings(\$values, 'autoload-dev', 'development')",
-    'Dependencies Are Not Available In This Slice',
-    'Processors Are Not Available In This Slice',
-    'Workspaces Are Not Available In This Slice',
+    'private function dependencies(',
+    'Processors Land In Stage 33 Slice 3',
+    'Workspaces Land In Stage 33 Slice 3',
 ]);
 $require($selectorPath, $selector, [
     '`--binary <name>` and `--library` are mutually exclusive.',
@@ -99,7 +99,7 @@ $require($generatedPath, $generated, ['generatedFor', 'contentHash', 'contents',
 $require($planPath, $plan, [
     "'schemaVersion' => 1",
     "\$activeScopes = ['main']",
-    "'dependencies' => []",
+    "'dependencies' => \$dependencies",
     "'generatedFor'",
 ]);
 $require($layoutPath, $layout, [
@@ -146,12 +146,13 @@ $require($composerPath, $composer, [
 ]);
 $require($developmentPath, $development, [
     '### Stage 33 Slice 1 - Complete',
-    '### Stage 33 Slice 2 - Next',
+    '### Stage 33 Slice 2 - Complete',
+    '### Stage 33 Slice 3 - Next',
     'Stage 33 is in progress, not complete',
     'Pre-Stage-45 Doria-native',
 ]);
 
-foreach (['DependencyResolver', 'WorkspaceDiscovery', 'ProcessorExecutor', 'TestDiscovery'] as $forbiddenClass) {
+foreach (['WorkspaceDiscovery', 'ProcessorExecutor', 'TestDiscovery'] as $forbiddenClass) {
     $matches = glob($root . '/src/**/' . $forbiddenClass . '.php');
     if (is_array($matches) && $matches !== []) {
         $failures[] = "src: Stage 33 Slice 1 added forbidden {$forbiddenClass}";

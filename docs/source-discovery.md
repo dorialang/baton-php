@@ -17,7 +17,7 @@ Only regular `.doria` files enter handwritten inventory. Baton never rediscovers
 its `build/` tree or `.git/`, and it does not skip arbitrary hidden directories.
 
 Discovery canonicalizes mapping roots and files, validates every configured
-path's exact case, follows only symlinks whose targets remain inside the project,
+path's exact case, follows only symlinks whose targets remain inside its package,
 and rejects loops, duplicate canonical files, conflicting scopes, and ASCII
 case-folded portable path collisions. Results are sorted by normalized
 project-relative UTF-8 path with binary comparison, independent of mapping or
@@ -33,3 +33,10 @@ scope, main/development destination, one contents-or-existing-path source, and a
 matching SHA-256 digest. Public manifests cannot declare generated roots, and
 Slice 1 neither runs processors nor writes generated files. Slice 3 will use
 this boundary without recursively treating output as handwritten source.
+
+For a resolved dependency, Baton selects the package's library target and
+discovers only its main autoload inventory. Dependency development mappings and
+binary entries remain inactive. Source identities are package-relative and
+prefixed with the resolved compiler package identity, so sibling path packages
+and immutable Git checkouts use the same compiler contract without sharing
+filesystem identity.

@@ -126,11 +126,16 @@ When source development uses `--compiler` instead of an installed manifest,
 component hashes, `doria-lsp`, and the private runtime cannot be verified and
 are reported as warnings.
 
+`doctor` also reports the Git executable and version when available, the global
+Baton dependency-cache location and writability, invocation-scoped offline
+policy, and current-project lockfile presence. Missing Git is a warning because
+dependency-free and path-only projects remain fully usable.
+
 The cache check follows the host convention:
 
-- `%LOCALAPPDATA%\Doria\cache` on Windows;
-- `~/Library/Caches/Doria` on macOS;
-- `$XDG_CACHE_HOME/doria`, or `~/.cache/doria`, on Linux.
+- `%LOCALAPPDATA%\Doria\Baton\Cache` on Windows;
+- `~/Library/Caches/Doria/Baton` on macOS;
+- `$XDG_CACHE_HOME/doria/baton`, or `~/.cache/doria/baton`, on Linux.
 
 Typical failures use Baton diagnostics:
 
@@ -147,7 +152,8 @@ The correction is to install a matching Doria toolchain or provide an exact comp
 
 For manifest schema 2, Baton invokes the selected compiler with a deterministic
 compiler build-plan schema 1. The plan contains the selected package target,
-namespace mappings, source scopes, and source identities; `doriac` still owns
+namespace mappings, source scopes, source identities, package roots, and exact
+normal dependency edges for the complete locked graph; `doriac` still owns
 Doria parsing and semantics. Schema-1 projects keep their historical direct
 `doriac check <entry>` and `doriac compile <entry>` invocation.
 

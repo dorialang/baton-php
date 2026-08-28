@@ -188,6 +188,77 @@ DORIA);
         self::assertStringContainsString('src/Greeter.doria', $plan);
     }
 
+    public function testPathDependencyGraphBuildsAndRunsWithExplicitCompiler(): void
+    {
+        $compiler = $this->compiler();
+        $workspace = $this->temporaryDirectory('real compiler dependency graph');
+        $support = $workspace . '/support';
+        $application = $workspace . '/application';
+        self::assertTrue(mkdir($support . '/src', 0o755, true));
+        self::assertTrue(mkdir($application . '/src', 0o755, true));
+        $this->write($support, 'Baton.toml', <<<'TOML'
+manifest-version = 2
+[package]
+name = "acme/support"
+version = "1.2.0"
+edition = "2026"
+[targets.library]
+name = "support"
+[autoload.namespaces]
+"" = "src/"
+TOML);
+        $this->write($support, 'src/Support.doria', <<<'DORIA'
+class Support
+{
+    function message(): string
+    {
+        return "dependency";
+    }
+}
+DORIA);
+        $this->write($application, 'Baton.toml', <<<'TOML'
+manifest-version = 2
+[package]
+name = "acme/application"
+version = "1.0.0"
+edition = "2026"
+[[targets.binary]]
+name = "application"
+entry = "src/main.doria"
+[autoload.namespaces]
+"" = "src/"
+[dependencies]
+"acme/support" = { path = "../support", version = "^1.0" }
+TOML);
+        $this->write($application, 'src/main.doria', <<<'DORIA'
+function main(): void
+{
+    let $support = new Support();
+    echo $support->message() . "\n";
+}
+DORIA);
+
+        $install = $this->runBaton(['install', '--offline'], $application);
+        self::assertSame(0, $install['exitCode'], $install['stderr']);
+        foreach (['check', 'build'] as $command) {
+            $result = $this->runBaton([$command, '--compiler', $compiler, '--offline'], $application);
+            self::assertSame(0, $result['exitCode'], $result['stderr']);
+        }
+        $run = $this->runBaton(['run', '--compiler', $compiler, '--offline'], $application);
+        self::assertSame(0, $run['exitCode'], $run['stderr']);
+        self::assertSame("dependency\n", $run['stdout']);
+
+        $plans = glob($application . '/build/*/development/application/build-plan.json') ?: [];
+        self::assertCount(1, $plans);
+        /** @var array{packages?: mixed} $plan */
+        $plan = json_decode((string) file_get_contents($plans[0]), true, flags: JSON_THROW_ON_ERROR);
+        self::assertIsArray($plan['packages'] ?? null);
+        self::assertSame(
+            ['acme/application', 'acme/support'],
+            array_column($plan['packages'], 'identity'),
+        );
+    }
+
     private function compiler(): string
     {
         $compiler = getenv('DORIA_COMPILER');

@@ -59,7 +59,8 @@ Commands such as `doctor` that do not require a project skip project discovery. 
 | `Application` | Registers the CLI and declares the Baton toolchain version |
 | `Commands` | Translate command-line input into orchestration steps |
 | `Project` | Locate project roots |
-| `Manifest` | Load and validate `Baton.toml` |
+| `Manifest` | Load and validate `Baton.toml` dependency declarations |
+| `Dependency` | Resolve one-version graphs, strict locks, exact Git cache entries, and offline policy |
 | `Source` | Discover contained main/development source inventories without parsing Doria |
 | `Build` | Select managed paths and write compiler plans and receipts atomically |
 | `Toolchain` | Discover components and verify identity, target, and hashes |
@@ -154,8 +155,9 @@ tests, and production release-ownership transfer to `dorialang/baton`.
 The unsuffixed `2026.03.1` toolchain may not ship before this gate passes.
 
 The accepted target architecture is detailed in [Phase F package and dependency
-model](phase-f-package-and-dependency-model.md). Stage 33 Slice 1 now implements
-schema 2 single-package manifests, targets, source discovery, compiler plans,
-and receipts while retaining exact schema-1 behavior. Dependency resolution and
-lockfiles remain Slice 2; workspaces, tests, processors, and generated-source
-writes remain Slice 3.
+model](phase-f-package-and-dependency-model.md). Stage 33 Slices 1 and 2 now
+implement schema 2 manifests, targets, source discovery, dependency resolution,
+strict locks, exact Git caching, offline operation, multi-package compiler plans,
+and receipts while retaining exact schema-1 behavior. Workspaces, development
+dependencies, tests, processors, graph commands, and generated-source writes
+remain Slice 3.

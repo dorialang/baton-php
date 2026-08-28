@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Doria\Baton\Build;
 
+use Doria\Baton\Dependency\PathContentFingerprint;
 use Doria\Baton\Diagnostics\BatonError;
 
 final readonly class BuildReceiptWriter
@@ -52,6 +53,11 @@ final readonly class BuildReceiptWriter
             'profile' => $context->profile,
             'buildPlan' => basename($context->buildPlan->path),
             'buildPlanSha256' => $context->buildPlan->sha256,
+            'lock' => $context->lockSha256 === null ? null : [
+                'path' => 'Baton.lock',
+                'sha256' => $context->lockSha256,
+            ],
+            'pathDependencies' => $this->pathDependencies($context),
             'artifact' => $artifactRecord,
         ];
         $json = json_encode(
@@ -62,5 +68,27 @@ final readonly class BuildReceiptWriter
                 | JSON_THROW_ON_ERROR,
         ) . "\n";
         $this->files->write($context->layout->receipt, $json, 'Build Metadata Could Not Be Written');
+    }
+
+    /** @return list<array{package: string, compilerPackage: string, contentSha256: string}> */
+    private function pathDependencies(Schema2ProjectContext $context): array
+    {
+        $fingerprints = new PathContentFingerprint();
+        $dependencies = [];
+        foreach ($context->graph->sortedPackages() as $package) {
+            if ($package->source->kind !== 'path') {
+                continue;
+            }
+            $dependencies[] = [
+                'package' => $package->manifest->package->name,
+                'compilerPackage' => $package->manifest->package->compilerIdentity,
+                'contentSha256' => $fingerprints->calculate(
+                    $package->manifestFingerprint,
+                    $package->inventory,
+                ),
+            ];
+        }
+
+        return $dependencies;
     }
 }

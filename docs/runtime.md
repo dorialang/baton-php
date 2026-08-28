@@ -95,6 +95,12 @@ production dependencies only, including the TOML and SemVer libraries required
 to load schema-2 projects without system Composer. `baton-dependencies.json`
 records every included Composer package and its copied licence notices.
 
+The PHAR includes Baton's dependency resolver, strict lockfile reader, cache
+logic, TOML parser, and SemVer implementation. Git itself is not bundled into
+the private PHP runtime: only projects using Git dependencies require a host or
+toolchain Git executable. Locked path dependencies and already cached exact Git
+checkouts remain available under `--offline` without Composer or network access.
+
 ## Build a private runtime
 
 Runtime builds are host-native. First inspect the selected plan:

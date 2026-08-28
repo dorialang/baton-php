@@ -1,9 +1,9 @@
 # Phase F Package And Dependency Model
 
 This document records the accepted target contract for Baton's package system.
-It follows Doria Decisions 0117 and 0118. Stage 33 Slice 1 implements the
-manifest, target, discovery, and single-package build-plan portions in the
-executable PHP bootstrap.
+It follows Doria Decisions 0117 and 0118. Stage 33 Slices 1 and 2 implement the
+manifest, target, discovery, dependency-resolution, lockfile, cache, offline,
+and multi-package build-plan portions in the executable PHP bootstrap.
 
 ## Schema Compatibility And Current Boundary
 
@@ -22,11 +22,11 @@ entry = "src/main.doria"
 Schema 1 means one binary, one explicit entry file, no `autoload`, no
 dependencies, no `Baton.lock`, and no workspace. It is not reinterpreted.
 
-Stage 33 Slice 1 also accepts strict schema 2 and emits compiler build plans for
-one package. It does not resolve or fetch dependencies, generate a lockfile,
-discover workspaces, execute tests, or run processors. Slice 2 owns dependency
-resolution, lockfiles, cache, offline behavior, and dependency commands. Slice 3
-owns workspaces, tests, and processors.
+Stage 33 Slice 1 accepts strict schema 2. Slice 2 resolves normal path and Git
+dependencies, validates SemVer constraints, writes strict `Baton.lock` files,
+uses exact Git cache entries, and emits multi-package compiler build plans.
+Slice 3 owns development dependencies, workspaces, tests, processors, generated
+source writes, and dependency graph presentation.
 
 ## Schema 2
 
@@ -51,9 +51,9 @@ entry = "src/main.doria"
 Unscoped local names require explicit `publishable = false` and map to the
 reserved compiler identity `local/<name>`. Scoped `vendor/package` identities
 default to publishable and may opt out. Schema 2 requires strict SemVer and
-edition `"2026"`. Dependency, development-dependency, processor, and workspace
-tables are recognized but diagnosed with their owning future slice rather than
-ignored.
+edition `"2026"`. Normal dependencies are active. Development-dependency,
+processor, and workspace tables are recognized but diagnosed with their owning
+Slice 3 boundary rather than ignored.
 
 ## Source Discovery
 
@@ -146,9 +146,10 @@ declared dependencies are source-visible. Transitive dependencies are not.
 Externally accessible signatures cannot leak a type from an undeclared direct
 dependency.
 
-One build graph resolves one version per `vendor/package` identity. Conflicts
-report every chain, constraint, and source. Every package dependency cycle is
-rejected, including active development, processor, and workspace edges.
+One build graph resolves one version per package identity. Conflicts report
+every contributing chain, constraint, and source. Every normal dependency cycle
+is rejected. Development, processor, and workspace edges do not exist until
+Slice 3.
 
 The first source transports are path and Git. A Git dependency chooses exactly
 one of `rev`, `tag`, or `branch`; the lockfile always records the exact commit.
@@ -166,8 +167,8 @@ releases remain CalVer.
 ## Lockfile And Build Receipt
 
 `Baton.lock` is deterministic, machine-generated JSON and is never hand-edited.
-Applications, libraries, and workspaces commit one lockfile at the workspace
-root. Entries carry package/version identity, category, edges, source kind,
+Applications and libraries commit the project-root lockfile. Future workspaces
+will commit one at the workspace root. Entries carry package/version identity, category, edges, source kind,
 canonical URL or manifest-relative path, exact resolution, and integrity data.
 Remote URLs contain no secrets; committed path entries contain no absolute
 local paths.
@@ -205,21 +206,24 @@ receive a local `vendor/` directory by default. Workspace storage contains
 build plans, receipts, generated sources, inventories, compiler-cache
 references, and artifacts.
 
-Offline install/check/build/run/test never reaches the network. It uses the
-lockfile, live path dependencies, cached exact remote sources, and valid
-generated inputs. Missing content is reported without version substitution.
+Offline install/check/build/run never reaches the network. It uses the lockfile,
+live path dependencies, and cached exact Git sources. Missing content is
+reported without version substitution. Test execution and generated-source
+processing remain Slice 3 work.
 
-The accepted dependency commands are `install`, `add`, `remove`, `update`,
-`fetch`, `tree`, and `why`. Slice 1 recognizes them only to produce precise
-Slice-2 diagnostics. They perform no resolution, mutation, fetching, caching,
-or lockfile writes.
+`install`, `add`, `remove`, `update`, and `fetch` are implemented. `tree` and
+`why` are recognized but remain stage-gated to Slice 3. See
+[Dependencies](dependencies.md), [Lockfile](lockfile.md), [Dependency cache](dependency-cache.md),
+and [Offline operation](offline.md).
 
 ## Delivery Sequence
 
 Stages 31 and 32 are complete. Stage 33 Slice 1 is complete: schema 2, source
-inventory, targets, and single-package compiler plans. Stage 33 Slice 2 is next:
-resolver, lockfile, cache, and offline behavior. Slice 3 follows with
-workspaces, tests, and processors. Stage 33 remains in progress, not complete.
+inventory, targets, and single-package compiler plans. Stage 33 Slice 2 is
+complete: normal dependency resolution, lockfiles, exact Git caching, offline
+operation, dependency commands, and multi-package plans. Slice 3 is next with
+workspaces, development dependencies, tests, processors, generated-source
+writes, and graph presentation. Stage 33 remains in progress, not complete.
 Those slices run in this disposable PHP UX bootstrap to validate and freeze the
 observable contract. Decision 0124 then requires a parity-gated Pre-Stage-45
 port to the clean Doria-native `dorialang/baton` repository, production release

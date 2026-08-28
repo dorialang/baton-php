@@ -7,6 +7,11 @@ namespace Doria\Baton;
 use Doria\Baton\Commands\BuildCommand;
 use Doria\Baton\Commands\CheckCommand;
 use Doria\Baton\Commands\DoctorCommand;
+use Doria\Baton\Commands\FetchCommand;
+use Doria\Baton\Commands\InstallCommand;
+use Doria\Baton\Commands\AddCommand;
+use Doria\Baton\Commands\RemoveCommand;
+use Doria\Baton\Commands\UpdateCommand;
 use Doria\Baton\Commands\NewCommand;
 use Doria\Baton\Commands\RunCommand;
 use Doria\Baton\Commands\StageGatedCommand;
@@ -30,6 +35,10 @@ final class Application
     public static function create(): SymfonyApplication
     {
         $application = new SymfonyApplication('baton', self::VERSION);
+        $definition = $application->getDefinition();
+        $options = $definition->getOptions();
+        unset($options['version']);
+        $definition->setOptions($options);
 
         $application->addCommands([
             new NewCommand(),
@@ -38,6 +47,11 @@ final class Application
             new RunCommand(),
             new DoctorCommand(),
             new VersionCommand(),
+            new InstallCommand(),
+            new AddCommand(),
+            new RemoveCommand(),
+            new UpdateCommand(),
+            new FetchCommand(),
         ]);
 
         $application->addCommands(self::stageGatedCommands());
@@ -66,34 +80,13 @@ final class Application
                 "Compiler-owned #[Test] metadata is available. Test discovery and\n"
                     . "execution land in Stage 33 Slice 3."
             )),
-            new StageGatedCommand('install', 'Install package dependencies', $stage33(
-                'install',
-                "Dependency resolution, Baton.lock, and installation land in\n"
-                    . "Stage 33 Slice 2."
-            )),
-            new StageGatedCommand('add', 'Add a dependency', $stage33(
-                'add',
-                "Dependency mutation and resolution land in Stage 33 Slice 2."
-            )),
-            new StageGatedCommand('remove', 'Remove a dependency', $stage33(
-                'remove',
-                "Dependency mutation and resolution land in Stage 33 Slice 2."
-            )),
-            new StageGatedCommand('update', 'Update package dependencies', $stage33(
-                'update',
-                "Dependency updates and lockfile ownership land in Stage 33 Slice 2."
-            )),
-            new StageGatedCommand('fetch', 'Fetch package sources', $stage33(
-                'fetch',
-                "Package source fetching and caching land in Stage 33 Slice 2."
-            )),
             new StageGatedCommand('tree', 'Show the dependency tree', $stage33(
                 'tree',
-                "Resolved dependency graph inspection lands in Stage 33 Slice 2."
+                "Dependency graph commands land in Stage 33 Slice 3."
             )),
             new StageGatedCommand('why', 'Explain why a dependency is present', $stage33(
                 'why',
-                "Resolved dependency graph inspection lands in Stage 33 Slice 2."
+                "Dependency graph commands land in Stage 33 Slice 3."
             )),
             new StageGatedCommand('publish', 'Publish the package', $stage33(
                 'publish',

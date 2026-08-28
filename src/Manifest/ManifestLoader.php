@@ -63,6 +63,19 @@ final class ManifestLoader
             );
         }
 
+        return $this->parse($projectRoot, $contents);
+    }
+
+    public function loadContents(string $projectRoot, string $contents): Manifest|Schema2Manifest
+    {
+        $this->manifestPath = $projectRoot . DIRECTORY_SEPARATOR . ProjectLocator::MANIFEST_FILE;
+
+        return $this->parse($projectRoot, $contents);
+    }
+
+    private function parse(string $projectRoot, string $contents): Manifest|Schema2Manifest
+    {
+
         $result = Toml::tryParse($contents, TomlVersion::V10);
         $document = $result->getDocument();
         $this->locations = $document === null ? null : new TomlLocationIndex($document);
@@ -151,15 +164,6 @@ final class ManifestLoader
     {
         $this->rejectUnknown($values, self::SCHEMA_2_TOP_LEVEL, '');
         $this->rejectFutureTables($values);
-        if (file_exists($projectRoot . DIRECTORY_SEPARATOR . 'Baton.lock')) {
-            throw $this->error(
-                'B0320',
-                'Baton Lock Is Not Available In This Slice',
-                '',
-                'Schema-2 lockfile ownership begins in Stage 33 Slice 2. Remove Baton.lock '
-                    . 'before using this Slice-1 toolchain.',
-            );
-        }
 
         $packageValues = $this->requireTable($values, 'package');
         $this->rejectUnknown($packageValues, self::SCHEMA_2_PACKAGE, 'package');
@@ -172,7 +176,9 @@ final class ManifestLoader
 
         $this->rejectMappingOverlap($autoload);
 
-        return new Schema2Manifest($package, $targets, $autoload);
+        $dependencies = $this->dependencies($values);
+
+        return new Schema2Manifest($package, $targets, $autoload, $dependencies);
     }
 
     /** @param array<string, mixed> $values */
@@ -453,15 +459,164 @@ final class ManifestLoader
     private function rejectFutureTables(array $values): void
     {
         $future = [
-            'dependencies' => ['B0321', 'Dependencies Are Not Available In This Slice', 'Stage 33 Slice 2'],
-            'dev-dependencies' => ['B0322', 'Development Dependencies Are Not Available In This Slice', 'Stage 33 Slice 3'],
-            'processors' => ['B0323', 'Processors Are Not Available In This Slice', 'Stage 33 Slice 3'],
-            'workspace' => ['B0324', 'Workspaces Are Not Available In This Slice', 'Stage 33 Slice 3'],
+            'dev-dependencies' => ['B0322', 'Development Dependencies Land In Stage 33 Slice 3', 'Stage 33 Slice 3'],
+            'processors' => ['B0323', 'Processors Land In Stage 33 Slice 3', 'Stage 33 Slice 3'],
+            'workspace' => ['B0324', 'Workspaces Land In Stage 33 Slice 3', 'Stage 33 Slice 3'],
         ];
         foreach ($future as $key => [$code, $title, $stage]) {
             if (array_key_exists($key, $values)) {
                 throw $this->error($code, $title, $key, "`{$key}` lands in {$stage}.");
             }
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $values
+     * @return array<string, DependencyDeclaration>
+     */
+    private function dependencies(array $values): array
+    {
+        if (!array_key_exists('dependencies', $values)) {
+            return [];
+        }
+        $table = $this->requireTable($values, 'dependencies');
+        $dependencies = [];
+        foreach ($table as $package => $declaration) {
+            $path = "dependencies.{$package}";
+            $this->assertDependencyPackageName($package, $path);
+            if (!is_array($declaration) || array_is_list($declaration)) {
+                throw $this->wrongType($path, 'an inline dependency table', $declaration);
+            }
+            $declaration = $this->stringKeyedTable($declaration, $path);
+            $this->rejectUnknown(
+                $declaration,
+                ['path', 'git', 'rev', 'tag', 'branch', 'version'],
+                $path,
+            );
+
+            $hasPath = array_key_exists('path', $declaration);
+            $hasGit = array_key_exists('git', $declaration);
+            if ($hasPath === $hasGit) {
+                throw $this->error(
+                    'B0330',
+                    $hasPath ? 'Dependency Source Modes Conflict' : 'Dependency Source Is Missing',
+                    $path,
+                    'Declare exactly one dependency source: `path` or `git`.',
+                );
+            }
+
+            $version = null;
+            if (array_key_exists('version', $declaration)) {
+                $expression = $this->requireString($declaration, 'version', $path);
+                try {
+                    $version = PackageVersionConstraint::parse($expression);
+                } catch (UnexpectedValueException) {
+                    throw $this->error(
+                        'B0331',
+                        'Dependency Version Constraint Is Invalid',
+                        "{$path}.version",
+                        "Constraint `{$expression}` must be exact SemVer, caret, tilde, or a comparator conjunction.",
+                    );
+                }
+            }
+
+            if ($hasPath) {
+                foreach (['rev', 'tag', 'branch'] as $selector) {
+                    if (array_key_exists($selector, $declaration)) {
+                        throw $this->error(
+                            'B0330',
+                            'Dependency Source Modes Conflict',
+                            "{$path}.{$selector}",
+                            'Git selectors cannot be used with a path dependency.',
+                        );
+                    }
+                }
+                $sourcePath = $this->requireString($declaration, 'path', $path);
+                $this->assertDependencyPath($sourcePath, "{$path}.path");
+                $source = new PathDependencySource(str_replace('\\', '/', $sourcePath));
+            } else {
+                if (!str_contains($package, '/')) {
+                    throw $this->error(
+                        'B0330',
+                        'Dependency Declaration Is Invalid',
+                        $path,
+                        'Git dependencies require a scoped `vendor/package` identity.',
+                    );
+                }
+                $url = $this->requireString($declaration, 'git', $path);
+                try {
+                    $url = GitUrl::canonicalize($url);
+                } catch (UnexpectedValueException $error) {
+                    $title = str_contains($error->getMessage(), 'credentials')
+                        ? 'Git Source Contains Credentials'
+                        : 'Git Source URL Is Invalid';
+                    throw $this->error('B0332', $title, "{$path}.git", "Git URL `{$url}` is not permitted.");
+                }
+                $selectors = array_values(array_filter(
+                    ['rev', 'tag', 'branch'],
+                    static fn (string $selector): bool => array_key_exists($selector, $declaration),
+                ));
+                if (count($selectors) !== 1) {
+                    throw $this->error(
+                        'B0333',
+                        $selectors === [] ? 'Git Selector Is Missing' : 'Git Selectors Conflict',
+                        $path,
+                        'Declare exactly one Git selector: `rev`, `tag`, or `branch`.',
+                    );
+                }
+                $kind = $selectors[0];
+                $value = $this->requireString($declaration, $kind, $path);
+                try {
+                    $selector = GitSelector::parse($kind, $value);
+                } catch (UnexpectedValueException) {
+                    $title = match ($kind) {
+                        'rev' => 'Git Revision Is Invalid',
+                        'tag' => 'Git Tag Is Invalid',
+                        default => 'Git Branch Is Invalid',
+                    };
+                    throw $this->error('B0333', $title, "{$path}.{$kind}", "Git {$kind} `{$value}` is invalid.");
+                }
+                $source = new GitDependencySource($url, $selector);
+            }
+
+            $dependencies[$package] = new DependencyDeclaration($package, $source, $version);
+        }
+        ksort($dependencies, SORT_STRING);
+
+        return $dependencies;
+    }
+
+    private function assertDependencyPackageName(string $package, string $path): void
+    {
+        try {
+            PackageIdentity::compilerIdentity($package);
+        } catch (UnexpectedValueException) {
+            throw $this->error(
+                'B0330',
+                'Dependency Declaration Is Invalid',
+                $path,
+                "Dependency key `{$package}` must be a lowercase package name.",
+            );
+        }
+    }
+
+    private function assertDependencyPath(string $value, string $path): void
+    {
+        $normalized = str_replace('\\', '/', $value);
+        if ($normalized === ''
+            || str_contains($normalized, "\0")
+            || preg_match('/[\x01-\x1f\x7f]/', $normalized) === 1
+            || str_starts_with($normalized, '/')
+            || str_starts_with($normalized, '//')
+            || preg_match('/^[A-Za-z]:\//', $normalized) === 1
+            || preg_match('#^[A-Za-z][A-Za-z0-9+.-]*://#', $normalized) === 1
+        ) {
+            throw $this->error(
+                'B0330',
+                'Dependency Declaration Is Invalid',
+                $path,
+                "Path `{$value}` must be relative to the declaring package manifest.",
+            );
         }
     }
 
@@ -495,7 +650,7 @@ final class ManifestLoader
             throw $this->missing($path);
         }
         $value = $values[$key];
-        if (!is_array($value) || array_is_list($value)) {
+        if (!is_array($value) || ($value !== [] && array_is_list($value))) {
             throw $this->wrongType($path, 'a TOML table', $value);
         }
 

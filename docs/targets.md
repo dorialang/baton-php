@@ -33,3 +33,8 @@ All configured binary entries are reserved. A binary plan marks only its
 selected entry as `entry` and excludes other binary entries. A library plan
 excludes every binary entry. Shared autoload sources remain available to all
 targets.
+
+A package consumed as a dependency must use schema 2 and declare a library
+target. Baton never infers a library from a binary. Dependency build plans select
+that library, include its main autoload sources, and exclude every binary entry
+and development source.

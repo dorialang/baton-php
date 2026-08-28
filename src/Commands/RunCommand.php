@@ -45,6 +45,7 @@ final class RunCommand extends BatonCommand
             );
         TargetOptions::configure($this);
         CompilerOptions::configure($this);
+        DependencyOptions::configureOffline($this);
     }
 
     protected function handle(InputInterface $input, OutputInterface $output): int
@@ -69,6 +70,7 @@ final class RunCommand extends BatonCommand
                 $selected,
                 $toolchain,
                 $release ? 'release' : 'development',
+                network: DependencyOptions::network($input),
             );
             $buildOutput = $output->isVerbose() ? $output : new BufferedOutput();
             $buildExitCode = (new Schema2BuildService())->build($context, $buildOutput);
@@ -105,6 +107,9 @@ final class RunCommand extends BatonCommand
         }
         if ((bool) $input->getOption('development')) {
             $buildArguments['--development'] = true;
+        }
+        if ((bool) $input->getOption('offline')) {
+            $buildArguments['--offline'] = true;
         }
 
         $buildInput = new ArrayInput($buildArguments);
