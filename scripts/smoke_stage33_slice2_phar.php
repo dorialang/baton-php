@@ -187,7 +187,8 @@ function run(string $phar, array $arguments, string $workingDirectory, array $en
 function expectSuccess(array $result, string $operation): void
 {
     if ($result['status'] !== 0) {
-        fail("{$operation} failed with {$result['status']}: {$result['stderr']}");
+        $output = trim($result['stderr'] . "\n" . $result['stdout']);
+        fail("{$operation} failed with {$result['status']}: {$output}");
     }
 }
 
