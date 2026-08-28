@@ -111,7 +111,15 @@ final class GitClient implements GitTransport
             $this->clearInterruptedCheckouts($parent, $commit);
             $temporary = $parent . DIRECTORY_SEPARATOR . '.' . $commit . '.' . bin2hex(random_bytes(6)) . '.tmp';
             $this->run(
-                ['clone', '--no-checkout', '--no-local', $this->localRepositoryUrl($mirror), $temporary],
+                [
+                    '-c',
+                    'protocol.file.allow=always',
+                    'clone',
+                    '--no-checkout',
+                    '--no-local',
+                    $this->localRepositoryUrl($mirror),
+                    $temporary,
+                ],
                 $cache,
                 null,
                 'Git Dependency Could Not Be Resolved',

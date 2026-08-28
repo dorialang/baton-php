@@ -127,7 +127,17 @@ final class DependencyCacheTest extends TestCase
         $repositoryUrl = $this->localGitUrl($repository);
         $source = new GitDependencySource($repositoryUrl, GitSelector::parse('rev', $commit));
         $resolved = $client->resolve($source, NetworkPolicy::Online, $cache, true);
-        $checkout = $client->checkout($repositoryUrl, $resolved, NetworkPolicy::Online, $cache);
+        $previousProtocolOrigin = getenv('GIT_PROTOCOL_FROM_USER');
+        putenv('GIT_PROTOCOL_FROM_USER=0');
+        try {
+            $checkout = $client->checkout($repositoryUrl, $resolved, NetworkPolicy::Online, $cache);
+        } finally {
+            if ($previousProtocolOrigin === false) {
+                putenv('GIT_PROTOCOL_FROM_USER');
+            } else {
+                putenv('GIT_PROTOCOL_FROM_USER=' . $previousProtocolOrigin);
+            }
+        }
         $markerTime = filemtime($checkout . '/.baton-cache.json');
         self::assertSame($checkout, $client->checkout($repositoryUrl, $resolved, NetworkPolicy::Offline, $cache));
         self::assertSame($markerTime, filemtime($checkout . '/.baton-cache.json'));
