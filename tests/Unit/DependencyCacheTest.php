@@ -130,7 +130,11 @@ final class DependencyCacheTest extends TestCase
         $previousProtocolOrigin = getenv('GIT_PROTOCOL_FROM_USER');
         putenv('GIT_PROTOCOL_FROM_USER=0');
         try {
-            $checkout = $client->checkout($repositoryUrl, $resolved, NetworkPolicy::Online, $cache);
+            try {
+                $checkout = $client->checkout($repositoryUrl, $resolved, NetworkPolicy::Online, $cache);
+            } catch (BatonError $error) {
+                self::fail($error->render());
+            }
         } finally {
             if ($previousProtocolOrigin === false) {
                 putenv('GIT_PROTOCOL_FROM_USER');
