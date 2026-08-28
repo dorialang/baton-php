@@ -9,6 +9,7 @@ on:
       - 'composer.lock'
       - 'packaging/**'
       - 'src/**'
+      - 'scripts/smoke_*_phar.php'
       - 'templates/**'
       - 'tests/Distribution/**'
   push:
@@ -20,6 +21,7 @@ on:
       - 'composer.lock'
       - 'packaging/**'
       - 'src/**'
+      - 'scripts/smoke_*_phar.php'
       - 'templates/**'
       - 'tests/Distribution/**'
 
