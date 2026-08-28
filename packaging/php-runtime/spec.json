@@ -39,6 +39,7 @@
         "common": [
             "phar",
             "iconv",
+            "filter",
             "zlib"
         ],
         "unix": [
@@ -90,6 +91,7 @@
     "capabilities": [
         "cli",
         "filesystem",
+        "filter",
         "hash",
         "iconv",
         "json",

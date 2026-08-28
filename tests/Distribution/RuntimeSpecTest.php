@@ -40,10 +40,10 @@ final class RuntimeSpecTest extends TestCase
             ],
             array_keys($spec['builder']['assets']),
         );
-        self::assertSame(['phar', 'iconv', 'zlib'], $spec['extensions']['common']);
+        self::assertSame(['phar', 'iconv', 'filter', 'zlib'], $spec['extensions']['common']);
         self::assertSame(['pcntl', 'posix'], $spec['extensions']['unix']);
         self::assertSame(
-            ['cli', 'filesystem', 'hash', 'iconv', 'json', 'phar', 'process'],
+            ['cli', 'filesystem', 'filter', 'hash', 'iconv', 'json', 'phar', 'process'],
             $spec['capabilities'],
         );
 

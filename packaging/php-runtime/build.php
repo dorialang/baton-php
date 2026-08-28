@@ -460,8 +460,8 @@ function listFiles(string $directory, string $relativeTo): array
 function verifyRuntime(string $runtime, string $expectedVersion, bool $unix): void
 {
     $requiredExtensions = $unix
-        ? ['Phar', 'iconv', 'zlib', 'pcntl', 'posix']
-        : ['Phar', 'iconv', 'zlib'];
+        ? ['Phar', 'iconv', 'filter', 'zlib', 'pcntl', 'posix']
+        : ['Phar', 'iconv', 'filter', 'zlib'];
     $probe = <<<'PHP'
 $required = json_decode($argv[1], true, flags: JSON_THROW_ON_ERROR);
 $missing = array_values(array_filter(
@@ -472,6 +472,7 @@ $capabilities = [
     'json' => function_exists('json_encode'),
     'hash' => function_exists('hash_file'),
     'filesystem' => function_exists('file_get_contents'),
+    'filter' => function_exists('filter_var'),
     'process' => function_exists('proc_open'),
 ];
 $failed = array_keys(array_filter(

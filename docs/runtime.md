@@ -48,13 +48,14 @@ The extension set is intentionally small:
 | Hash | Component and archive integrity |
 | PHAR | The Baton application archive |
 | iconv | Required by Symfony's mbstring compatibility layer |
+| filter | Required by the packaged TOML parser's numeric-token validation |
 | zlib | Required by the statically linked PHAR extension |
 | pcntl and posix | Signal handling on Linux and macOS |
 
 JSON, hashing, filesystem operations, and process execution are core capabilities
 in this build. Manifest schema 2 uses the packaged pure-PHP
-`php-collective/toml` parser, and package versions use packaged
-`composer/semver`; neither requires another PHP extension.
+`php-collective/toml` parser, which relies on the bundled filter extension for
+numeric-token validation. Package versions use packaged `composer/semver`.
 
 The build verifies every downloaded source and builder asset by SHA-256, probes the finished executable under `-n`, and records the binary hash, sources, extensions, capabilities, and licence paths in `runtime.json`.
 
