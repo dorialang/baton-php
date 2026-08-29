@@ -22,6 +22,7 @@ final readonly class ResolvedPackageSource
     {
         return match ($this->kind) {
             'path' => "path\0{$this->root}",
+            'workspace' => "workspace\0{$this->root}",
             'git' => "git\0{$this->url}\0{$this->selector?->kind}\0{$this->selector?->value}\0{$this->commit}",
             default => $this->kind,
         };

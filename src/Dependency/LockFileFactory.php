@@ -43,7 +43,7 @@ final class LockFileFactory
                 $dependencies,
             );
         }
-        $rootDependencies = $this->edges($graph->manifest->dependencies);
+        $rootDependencies = $this->edges($graph->manifest->declaredDependencies(true, true));
 
         return new LockFile(
             $graph->manifest->package->name,
@@ -65,12 +65,13 @@ final class LockFileFactory
             static fn (DependencyDeclaration $dependency): LockedDependency => new LockedDependency(
                 $dependency->package,
                 $dependency->version?->expression,
+                $dependency->kind,
             ),
             array_values($declarations),
         );
         usort($edges, static fn (LockedDependency $left, LockedDependency $right): int => strcmp(
-            $left->package,
-            $right->package,
+            $left->package . "\0" . $left->kind->value,
+            $right->package . "\0" . $right->kind->value,
         ));
 
         return $edges;

@@ -35,7 +35,7 @@ final class ManifestFingerprint
                 'include' => $mapping->patterns->include,
                 'exclude' => $mapping->patterns->exclude,
             ],
-            $manifest->autoload->main,
+            $manifest->autoload->all(),
         );
         usort($mappings, static fn (array $left, array $right): int => strcmp(
             $left['scope'] . "\0" . $left['prefix'] . "\0" . $left['path'],
@@ -57,15 +57,16 @@ final class ManifestFingerprint
 
                 return [
                     'package' => $dependency->package,
+                    'kind' => $dependency->kind->value,
                     'source' => $sourceData,
                     'version' => $dependency->version?->expression,
                 ];
             },
-            array_values($manifest->dependencies),
+            array_values($manifest->declaredDependencies(true, true)),
         );
         usort($dependencies, static fn (array $left, array $right): int => strcmp(
-            $left['package'],
-            $right['package'],
+            $left['package'] . "\0" . $left['kind'],
+            $right['package'] . "\0" . $right['kind'],
         ));
 
         $document = [
@@ -79,7 +80,23 @@ final class ManifestFingerprint
             ],
             'targets' => $targets,
             'autoload' => $mappings,
-            'dependencies' => $dependencies,
+            'dependencies' => array_values(array_filter(
+                $dependencies,
+                static fn (array $dependency): bool => $dependency['kind'] === 'normal',
+            )),
+            'developmentDependencies' => array_values(array_filter(
+                $dependencies,
+                static fn (array $dependency): bool => $dependency['kind'] === 'development',
+            )),
+            'processors' => array_map(
+                static fn (\Doria\Baton\Manifest\ProcessorDeclaration $processor): array => [
+                    'package' => $processor->package(),
+                    'binary' => $processor->binary,
+                    'attributes' => $processor->attributes,
+                ],
+                array_values($manifest->processors),
+            ),
+            'workspace' => $manifest->workspace === null ? null : ['members' => $manifest->workspace->members],
         ];
 
         return hash('sha256', json_encode(

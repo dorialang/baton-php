@@ -30,7 +30,7 @@ final class DependencyCommandTest extends TestCase
         self::assertSame(0, $reinstall['exitCode'], $reinstall['stderr']);
         self::assertSame($initialLockBytes, file_get_contents($root . '/Baton.lock'));
 
-        $add = $this->runBaton(['add', 'acme/support', '--path', '../support', '--version', '^1.0', '--offline'], $root);
+        $add = $this->runBaton(['add', 'acme/support', '--source', 'path', '--path', '../support', '--version', '^1.0', '--offline'], $root);
         self::assertSame(0, $add['exitCode'], $add['stderr']);
         self::assertStringContainsString('# retained project comment', (string) file_get_contents($root . '/Baton.toml'));
         self::assertFileExists($root . '/Baton.lock');
@@ -90,7 +90,7 @@ final class DependencyCommandTest extends TestCase
         $manifest = (string) file_get_contents($root . '/Baton.toml');
         $lock = (string) file_get_contents($root . '/Baton.lock');
 
-        $failed = $this->runBaton(['add', 'acme/missing', '--path', '../missing', '--offline'], $root);
+        $failed = $this->runBaton(['add', 'acme/missing', '--source', 'path', '--path', '../missing', '--offline'], $root);
 
         self::assertSame(1, $failed['exitCode']);
         self::assertStringContainsString('Path Dependency Could Not Be Read', $failed['stderr']);

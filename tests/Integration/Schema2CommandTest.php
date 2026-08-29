@@ -134,7 +134,7 @@ final class Schema2CommandTest extends TestCase
         self::assertSame(1, (int) file_get_contents($root . '/compiler-call-count'));
     }
 
-    public function testNewAndDependencyCommandsExposeSliceTwoWhileGraphCommandsRemainDeferred(): void
+    public function testNewDependencyAndGraphCommandsExposeTheCompletedPhaseFBoundary(): void
     {
         $root = $this->temporaryDirectory('new schema2');
         $new = $this->runBaton(['new', 'hello'], $root);
@@ -161,14 +161,16 @@ final class Schema2CommandTest extends TestCase
         self::assertFileExists($root . '/hello/Baton.lock');
         $fetch = $this->runBaton(['fetch'], $root . '/hello');
         self::assertSame(0, $fetch['exitCode'], $fetch['stderr']);
-        foreach (['tree', 'why'] as $command) {
-            $result = $this->runBaton([$command], $root . '/hello');
-            self::assertSame(1, $result['exitCode']);
-            self::assertStringContainsString('Stage 33 Slice 3', $result['stderr']);
-        }
-        $test = $this->runBaton(['test'], $root . '/hello');
-        self::assertStringContainsString('#[Test] metadata is available', $test['stderr']);
-        self::assertStringContainsString('Stage 33 Slice 3', $test['stderr']);
+        $tree = $this->runBaton(['tree'], $root . '/hello');
+        self::assertSame(0, $tree['exitCode'], $tree['stderr']);
+        self::assertSame("hello\n", $tree['stdout']);
+        $why = $this->runBaton(['why', 'hello'], $root . '/hello');
+        self::assertSame(0, $why['exitCode'], $why['stderr']);
+        self::assertSame("hello\n", $why['stdout']);
+        $test = $this->runBaton(['test', '--help'], $root . '/hello');
+        self::assertSame(0, $test['exitCode'], $test['stderr']);
+        self::assertStringContainsString('Discover, compile, and run project tests', $test['stdout']);
+        self::assertStringNotContainsString('Stage 33 Slice 3', $test['stdout'] . $test['stderr']);
     }
 
     private function project(): string

@@ -7,6 +7,7 @@ namespace Doria\Baton\Dependency;
 use Doria\Baton\Diagnostics\BatonError;
 use Doria\Baton\Manifest\GitSelector;
 use Doria\Baton\Manifest\GitUrl;
+use Doria\Baton\Manifest\DependencyKind;
 use Doria\Baton\Manifest\PackageIdentity;
 use Doria\Baton\Manifest\PackageVersionConstraint;
 use JsonException;
@@ -261,8 +262,10 @@ final class LockFileStore
         foreach ($value as $index => $edgeValue) {
             $edge = $this->object($edgeValue, "{$path}[{$index}]");
             $this->keys($edge, ['package', 'kind', 'constraint'], "{$path}[{$index}]");
-            if (($edge['kind'] ?? null) !== 'normal') {
-                throw $this->error('Baton Lock Is Invalid', 'Slice 2 lock edges must be `normal`.');
+            $kindValue = $this->string($edge['kind'] ?? null, "{$path}[{$index}].kind");
+            $kind = DependencyKind::tryFrom($kindValue);
+            if ($kind === null) {
+                throw $this->error('Baton Lock Is Invalid', "Unknown dependency edge kind `{$kindValue}`.");
             }
             $package = $this->string($edge['package'] ?? null, "{$path}[{$index}].package");
             try {
@@ -270,8 +273,9 @@ final class LockFileStore
             } catch (UnexpectedValueException) {
                 throw $this->error('Baton Lock Is Invalid', "Dependency edge package `{$package}` is invalid.");
             }
-            if (isset($packages[$package])) {
-                throw $this->error('Baton Lock Is Invalid', "Dependency edge `{$package}` is duplicated.");
+            $edgeKey = $package . "\0" . $kind->value;
+            if (isset($packages[$edgeKey])) {
+                throw $this->error('Baton Lock Is Invalid', "Dependency edge `{$package}` [{$kind->value}] is duplicated.");
             }
             $constraint = $edge['constraint'] ?? null;
             if ($constraint !== null) {
@@ -284,13 +288,13 @@ final class LockFileStore
                     throw $this->error('Baton Lock Is Invalid', "Dependency constraint `{$constraint}` is invalid.");
                 }
             }
-            $packages[$package] = new LockedDependency($package, $constraint);
-            $order[] = $package;
+            $packages[$edgeKey] = new LockedDependency($package, $constraint, $kind);
+            $order[] = $edgeKey;
         }
         $sortedOrder = $order;
         sort($sortedOrder, SORT_STRING);
         if ($order !== $sortedOrder) {
-            throw $this->error('Baton Lock Is Invalid', "Dependency edges in `{$path}` must be ordered by package.");
+            throw $this->error('Baton Lock Is Invalid', "Dependency edges in `{$path}` must be ordered by package then kind.");
         }
 
         return array_values($packages);

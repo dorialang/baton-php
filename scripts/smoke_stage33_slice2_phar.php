@@ -26,7 +26,7 @@ try {
 
     expectSuccess(run(
         $phar,
-        ['add', 'acme/support', '--path', '../support', '--version', '^1.0', '--offline'],
+        ['add', 'acme/support', '--source', 'path', '--path', '../support', '--version', '^1.0', '--offline'],
         $application,
     ), 'path dependency add');
     expectSuccess(run($phar, ['fetch', 'acme/support', '--offline'], $application), 'locked fetch');
@@ -49,8 +49,8 @@ try {
     }
 
     $tree = run($phar, ['tree'], $application);
-    if ($tree['status'] === 0 || !str_contains($tree['stderr'], 'Stage 33 Slice 3')) {
-        fail('tree was not kept behind the Stage 33 Slice 3 boundary');
+    if ($tree['status'] !== 0 || !str_contains($tree['stdout'], 'acme/support 1.0.0 [normal]')) {
+        fail('tree did not expose the exact locked path dependency');
     }
 
     $offline = createPackage($workspace, 'offline', 'acme/offline', true);
@@ -59,7 +59,7 @@ try {
     mkdir($cacheHome, 0o755, true);
     $missing = run(
         $phar,
-        ['add', 'acme/remote', '--git', 'https://example.invalid/acme/remote.git', '--tag', 'v1.0.0', '--offline'],
+        ['add', 'acme/remote', '--source', 'git', '--url', 'https://example.invalid/acme/remote.git', '--tag', 'v1.0.0', '--offline'],
         $offline,
         ['HOME' => $cacheHome, 'LOCALAPPDATA' => $cacheHome, 'XDG_CACHE_HOME' => $cacheHome],
     );

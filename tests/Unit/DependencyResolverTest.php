@@ -122,10 +122,10 @@ final class DependencyResolverTest extends TestCase
         $this->expectResolverError($root, $workspace, 'Dependency Package Name Does Not Match');
 
         $this->replaceManifestName($dependency, 'acme/expected');
-        $this->replaceDependency($root, '"acme/expected" = { path = "../dependency" }', '"acme/expected" = { path = "../dependency", version = "^1.0" }');
+        $this->replaceDependency($root, '"acme/expected" = { source = "path", path = "../dependency" }', '"acme/expected" = { source = "path", path = "../dependency", version = "^1.0" }');
         $this->expectResolverError($root, $workspace, 'Dependency Version Does Not Match');
 
-        $this->replaceDependency($root, '"acme/expected" = { path = "../dependency", version = "^1.0" }', '"acme/expected" = { path = "../dependency" }');
+        $this->replaceDependency($root, '"acme/expected" = { source = "path", path = "../dependency", version = "^1.0" }', '"acme/expected" = { source = "path", path = "../dependency" }');
         $contents = (string) file_get_contents($dependency . '/Baton.toml');
         $contents = preg_replace(
             '/\[targets\.library\]\nname = "[^"]+"/',
@@ -198,7 +198,7 @@ final class DependencyResolverTest extends TestCase
         if ($dependencies !== []) {
             $dependencyText = "\n[dependencies]\n";
             foreach ($dependencies as $package => $path) {
-                $dependencyText .= '"' . $package . '" = { path = "' . $path . '" }' . "\n";
+                $dependencyText .= '"' . $package . '" = { source = "path", path = "' . $path . '" }' . "\n";
             }
         }
         self::assertNotFalse(file_put_contents($root . '/Baton.toml', <<<TOML

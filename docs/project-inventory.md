@@ -1,0 +1,28 @@
+# Project Inventory
+
+`baton project --json` emits strict deterministic project document schema 1 for
+language servers and other local tooling:
+
+```console
+baton project --json --development --offline
+baton project --json --workspace --development --offline
+```
+
+The document contains selection, workspace members, exact package graph,
+package roots, manifests, lock identity, source inventories, valid generated
+source provenance, a compiler build-plan schema-1 tooling plan, and content
+fingerprints. It may contain canonical local roots needed to read sources, but
+never source bodies, credentials, environment values, processor logs, or cache
+implementation keys.
+
+The command validates manifests, the lock, and exact cached dependency content.
+It invokes no compiler, runs no processor, edits no project file, and performs
+no network operation in offline mode. Generated sources appear only when the
+shared generated-source registry proves their compiler revision, owner,
+processor, path, identity, and content hash. Missing or stale required output is
+a diagnostic directing the user to an online check or build.
+
+Language tooling consumes this protocol rather than parsing `Baton.toml`,
+`Baton.lock`, private inventory, or processor responses. Aggregate workspace
+plans retain package boundaries and direct edge categories; they do not invent
+one runtime entry or flatten members into mutual dependencies.

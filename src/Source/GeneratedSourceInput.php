@@ -13,6 +13,8 @@ final readonly class GeneratedSourceInput
         public ?string $contents,
         public ?string $existingPath,
         public string $contentHash,
+        public ?string $producer = null,
+        public ?string $owner = null,
     ) {
     }
 }

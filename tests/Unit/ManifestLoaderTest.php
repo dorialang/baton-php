@@ -8,6 +8,7 @@ use Doria\Baton\Diagnostics\BatonError;
 use Doria\Baton\Manifest\Manifest;
 use Doria\Baton\Manifest\ManifestLoader;
 use Doria\Baton\Manifest\Schema2Manifest;
+use Doria\Baton\Manifest\WorkspaceManifest;
 use Doria\Baton\Tests\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 
@@ -128,9 +129,6 @@ TOML);
         yield 'integer edition' => [str_replace('edition = "2026"', 'edition = 2026', self::schema2('acme/blog')), 'Manifest Field Has Wrong Type'];
         yield 'future edition' => [str_replace('edition = "2026"', 'edition = "2027"', self::schema2('acme/blog')), 'Doria Edition Is Unsupported'];
         yield 'unknown package field' => [str_replace('edition = "2026"', "edition = \"2026\"\ncolour = \"green\"", self::schema2('acme/blog')), 'Manifest Field Is Unknown'];
-        yield 'development dependency table' => [self::schema2('acme/blog') . "\n[dev-dependencies]\n", 'Development Dependencies Land In Stage 33 Slice 3'];
-        yield 'processors table' => [self::schema2('acme/blog') . "\n[processors]\n", 'Processors Land In Stage 33 Slice 3'];
-        yield 'workspace table' => [self::schema2('acme/blog') . "\n[workspace]\n", 'Workspaces Land In Stage 33 Slice 3'];
         yield 'target mode conflict' => [self::schema2('acme/blog') . "\n[targets.library]\nname = \"blog\"\n", 'Package Target Modes Conflict'];
         yield 'unfolded acronym namespace' => [str_replace('"" = "src/"', '"Doria\\\\Std\\\\IO\\\\" = "src/"', self::schema2('acme/blog')), 'Namespace Mapping Prefix Is Invalid'];
     }
@@ -156,7 +154,7 @@ TOML);
         self::assertInstanceOf(Schema2Manifest::class, (new ManifestLoader())->load($root));
     }
 
-    private function load(string $contents): Manifest|Schema2Manifest
+    private function load(string $contents): Manifest|Schema2Manifest|WorkspaceManifest
     {
         $root = $this->temporaryDirectory('manifest');
         self::assertNotFalse(file_put_contents($root . '/Baton.toml', $contents));

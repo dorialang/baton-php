@@ -128,8 +128,8 @@ DORIA);
         $directory = $root . '/build/' . Platform::host()->target() . '/development';
         $webPlan = (string) file_get_contents($directory . '/web/build-plan.json');
         self::assertStringContainsString('src/messages.doria', $webPlan);
-        self::assertStringContainsString('tests/Broken.doria', $webPlan);
-        self::assertStringContainsString('"scope": "development"', $webPlan);
+        self::assertStringNotContainsString('tests/Broken.doria', $webPlan);
+        self::assertStringNotContainsString('"scope": "development"', $webPlan);
         self::assertStringNotContainsString('src/worker.doria', $webPlan);
         self::assertStringNotContainsString('src/Fixtures/Hidden.doria', $webPlan);
 
@@ -228,7 +228,7 @@ entry = "src/main.doria"
 [autoload.namespaces]
 "" = "src/"
 [dependencies]
-"acme/support" = { path = "../support", version = "^1.0" }
+"acme/support" = { source = "path", path = "../support", version = "^1.0" }
 TOML);
         $this->write($application, 'src/main.doria', <<<'DORIA'
 function main(): void
@@ -257,6 +257,88 @@ DORIA);
             ['acme/application', 'acme/support'],
             array_column($plan['packages'], 'identity'),
         );
+    }
+
+    public function testMetadataDiscoveredTestsCompileOnceAndRunInFreshProcesses(): void
+    {
+        $compiler = $this->compiler();
+        $root = $this->temporaryDirectory('real compiler test runner');
+        self::assertTrue(mkdir($root . '/src', 0o755, true));
+        self::assertTrue(mkdir($root . '/tests', 0o755, true));
+        $this->write($root, 'Baton.toml', <<<'TOML'
+manifest-version = 2
+[package]
+name = "acme/tested"
+version = "1.0.0"
+edition = "2026"
+[targets.library]
+name = "tested"
+[autoload.namespaces]
+"" = "src/"
+[autoload-dev.namespaces]
+"" = "tests/"
+TOML);
+        $this->write($root, 'src/Library.doria', "class Library {}\n");
+        $this->write($root, 'tests/Feature.doria', <<<'DORIA'
+#[Test]
+function afterFailure(): void
+{
+    echo "after output\n";
+}
+
+#[Test]
+function failingTest(): void
+{
+    panic("expected test failure");
+}
+
+#[Test]
+function passingTest(): void
+{
+    echo "pass output\n";
+}
+DORIA);
+
+        $suite = $this->runBaton(['test', '--compiler', $compiler], $root);
+        self::assertSame(1, $suite['exitCode']);
+        self::assertStringContainsString(
+            'PASS acme/tested afterFailure',
+            $suite['stdout'],
+            $suite['stderr'] . $suite['stdout'],
+        );
+        self::assertStringContainsString('FAIL acme/tested failingTest', $suite['stdout']);
+        self::assertStringContainsString('PASS acme/tested passingTest', $suite['stdout']);
+        self::assertStringContainsString('expected test failure', $suite['stdout']);
+        self::assertStringNotContainsString('after output', $suite['stdout']);
+        self::assertStringNotContainsString('pass output', $suite['stdout']);
+        self::assertStringContainsString('Tests: 3 selected, 2 passed, 1 failed', $suite['stdout']);
+
+        $filtered = $this->runBaton(
+            ['test', '--filter', 'passing', '--show-output', '--compiler', $compiler],
+            $root,
+        );
+        self::assertSame(0, $filtered['exitCode'], $filtered['stderr']);
+        self::assertStringContainsString('pass output', $filtered['stdout']);
+        self::assertStringContainsString('Tests: 1 selected, 1 passed, 0 failed', $filtered['stdout']);
+
+        $testInventories = glob($root . '/build/*/development/acme/tested/tests/inventory.json') ?: [];
+        self::assertCount(1, $testInventories);
+        self::assertFileExists($root . '/build/.baton/inventory.json');
+        $inventory = json_decode(
+            (string) file_get_contents($root . '/build/.baton/inventory.json'),
+            true,
+            flags: JSON_THROW_ON_ERROR,
+        );
+        self::assertIsArray($inventory);
+        self::assertSame(1, $inventory['schemaVersion']);
+        $identity = new Process([$compiler, '--version', '--json']);
+        self::assertSame(0, $identity->run(), $identity->getErrorOutput());
+        $compilerIdentity = json_decode($identity->getOutput(), true, flags: JSON_THROW_ON_ERROR);
+        self::assertIsArray($compilerIdentity);
+        self::assertSame($compilerIdentity['commit'], $inventory['compilerRevision']);
+        $recordedTests = $inventory['tests'] ?? null;
+        self::assertIsArray($recordedTests);
+        self::assertArrayHasKey('acme/tested', $recordedTests);
     }
 
     private function compiler(): string

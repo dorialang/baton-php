@@ -74,6 +74,9 @@ jobs:
       - name: Smoke-test Stage 33 Slice 2 through the production PHAR
         run: composer smoke:phar:stage33-slice2
 
+      - name: Smoke-test Stage 33 Slice 3 through the production PHAR
+        run: composer smoke:phar:stage33-slice3
+
       - name: Upload PHAR smoke artifact
         if: runner.os == 'Linux'
         uses: actions/upload-artifact@v4

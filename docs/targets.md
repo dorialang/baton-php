@@ -38,3 +38,7 @@ A package consumed as a dependency must use schema 2 and declare a library
 target. Baton never infers a library from a binary. Dependency build plans select
 that library, include its main autoload sources, and exclude every binary entry
 and development source.
+
+In a workspace, select the owning member with `--package` before applying
+`--binary` or `--library`. Aggregate `build` and `run` are intentionally absent;
+aggregate `check`, `test`, `tree`, and `project` preserve package boundaries.

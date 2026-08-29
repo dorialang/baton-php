@@ -18,11 +18,11 @@ final class ManifestDependencyTest extends TestCase
     {
         $manifest = $this->load(<<<'TOML'
 [dependencies]
-support = { path = "../support" }
-"acme/database" = { path = "../database", version = "^2.0" }
-"acme/revision" = { git = "HTTPS://CODE.EXAMPLE.COM/acme/revision.git/", rev = "1a2b3c4" }
-"acme/tagged" = { git = "https://code.example.com/acme/tagged.git", tag = "v1.4.0", version = "^1.4" }
-"acme/branch" = { git = "ssh://git@CODE.EXAMPLE.COM/acme/branch.git", branch = "release/1.x" }
+support = { source = "path", path = "../support" }
+"acme/database" = { source = "path", path = "../database", version = "^2.0" }
+"acme/revision" = { source = "git", url = "HTTPS://CODE.EXAMPLE.COM/acme/revision.git/", rev = "1a2b3c4" }
+"acme/tagged" = { source = "git", url = "https://code.example.com/acme/tagged.git", tag = "v1.4.0", version = "^1.4" }
+"acme/branch" = { source = "git", url = "ssh://git@CODE.EXAMPLE.COM/acme/branch.git", branch = "release/1.x" }
 TOML);
 
         self::assertCount(5, $manifest->dependencies);
@@ -52,23 +52,26 @@ TOML);
     /** @return iterable<string, array{string, string}> */
     public static function invalidDeclarations(): iterable
     {
-        yield 'unknown field' => ['"acme/x" = { path = "../x", optional = true }', 'Manifest Field Is Unknown'];
-        yield 'missing source' => ['"acme/x" = { version = "^1.0" }', 'Dependency Source Is Missing'];
-        yield 'source conflict' => ['"acme/x" = { path = "../x", git = "https://example.com/x", rev = "abcdef0" }', 'Dependency Source Modes Conflict'];
-        yield 'missing selector' => ['"acme/x" = { git = "https://example.com/x" }', 'Git Selector Is Missing'];
-        yield 'two selectors' => ['"acme/x" = { git = "https://example.com/x", rev = "abcdef0", tag = "v1" }', 'Git Selectors Conflict'];
-        yield 'three selectors' => ['"acme/x" = { git = "https://example.com/x", rev = "abcdef0", tag = "v1", branch = "main" }', 'Git Selectors Conflict'];
-        yield 'path wrong type' => ['"acme/x" = { path = 1 }', 'Manifest Field Has Wrong Type'];
-        yield 'git wrong type' => ['"acme/x" = { git = 1, rev = "abcdef0" }', 'Manifest Field Has Wrong Type'];
-        yield 'version wrong type' => ['"acme/x" = { path = "../x", version = 1 }', 'Manifest Field Has Wrong Type'];
-        yield 'selector wrong type' => ['"acme/x" = { git = "https://example.com/x", rev = 1 }', 'Manifest Field Has Wrong Type'];
-        yield 'unscoped Git' => ['support = { git = "https://example.com/support", rev = "abcdef0" }', 'Dependency Declaration Is Invalid'];
-        yield 'reserved local identity' => ['"local/support" = { path = "../support" }', 'Dependency Declaration Is Invalid'];
-        yield 'absolute path' => ['"acme/x" = { path = "/tmp/x" }', 'Dependency Declaration Is Invalid'];
-        yield 'credential URL' => ['"acme/x" = { git = "https://user:secret@example.com/x", rev = "abcdef0" }', 'Git Source Contains Credentials'];
-        yield 'query URL' => ['"acme/x" = { git = "https://example.com/x?token=secret", rev = "abcdef0" }', 'Git Source URL Is Invalid'];
-        yield 'file URL' => ['"acme/x" = { git = "file:///tmp/x", rev = "abcdef0" }', 'Git Source URL Is Invalid'];
-        yield 'SCP URL' => ['"acme/x" = { git = "git@example.com:x", rev = "abcdef0" }', 'Git Source URL Is Invalid'];
+        yield 'unknown field' => ['"acme/x" = { source = "path", path = "../x", optional = true }', 'Manifest Field Is Unknown'];
+        yield 'missing source' => ['"acme/x" = { version = "^1.0" }', 'Dependency Source Must Be Declared'];
+        yield 'legacy Git locator' => ['"acme/x" = { git = "https://example.com/x", rev = "abcdef0" }', 'Git Source Locator Spelling Has Changed'];
+        yield 'path source with URL' => ['"acme/x" = { source = "path", path = "../x", url = "https://example.com/x" }', 'Dependency Source Modes Conflict'];
+        yield 'Git source with path' => ['"acme/x" = { source = "git", path = "../x", url = "https://example.com/x", rev = "abcdef0" }', 'Dependency Source Modes Conflict'];
+        yield 'Git missing URL' => ['"acme/x" = { source = "git", rev = "abcdef0" }', 'Git Source URL Is Missing'];
+        yield 'missing selector' => ['"acme/x" = { source = "git", url = "https://example.com/x" }', 'Git Selector Is Missing'];
+        yield 'two selectors' => ['"acme/x" = { source = "git", url = "https://example.com/x", rev = "abcdef0", tag = "v1" }', 'Git Selectors Conflict'];
+        yield 'three selectors' => ['"acme/x" = { source = "git", url = "https://example.com/x", rev = "abcdef0", tag = "v1", branch = "main" }', 'Git Selectors Conflict'];
+        yield 'path wrong type' => ['"acme/x" = { source = "path", path = 1 }', 'Manifest Field Has Wrong Type'];
+        yield 'url wrong type' => ['"acme/x" = { source = "git", url = 1, rev = "abcdef0" }', 'Manifest Field Has Wrong Type'];
+        yield 'version wrong type' => ['"acme/x" = { source = "path", path = "../x", version = 1 }', 'Manifest Field Has Wrong Type'];
+        yield 'selector wrong type' => ['"acme/x" = { source = "git", url = "https://example.com/x", rev = 1 }', 'Manifest Field Has Wrong Type'];
+        yield 'unscoped Git' => ['support = { source = "git", url = "https://example.com/support", rev = "abcdef0" }', 'Dependency Declaration Is Invalid'];
+        yield 'reserved local identity' => ['"local/support" = { source = "path", path = "../support" }', 'Dependency Declaration Is Invalid'];
+        yield 'absolute path' => ['"acme/x" = { source = "path", path = "/tmp/x" }', 'Dependency Declaration Is Invalid'];
+        yield 'credential URL' => ['"acme/x" = { source = "git", url = "https://user:secret@example.com/x", rev = "abcdef0" }', 'Git Source Contains Credentials'];
+        yield 'query URL' => ['"acme/x" = { source = "git", url = "https://example.com/x?token=secret", rev = "abcdef0" }', 'Git Source URL Is Invalid'];
+        yield 'file URL' => ['"acme/x" = { source = "git", url = "file:///tmp/x", rev = "abcdef0" }', 'Git Source URL Is Invalid'];
+        yield 'SCP URL' => ['"acme/x" = { source = "git", url = "git@example.com:x", rev = "abcdef0" }', 'Git Source URL Is Invalid'];
     }
 
     private function load(string $dependencies): Schema2Manifest

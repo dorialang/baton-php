@@ -11,14 +11,15 @@ use Doria\Baton\Manifest\PathDependencySource;
 
 final class ManifestDependencyEditor
 {
-    public function add(string $contents, DependencyDeclaration $dependency): string
+    public function add(string $contents, DependencyDeclaration $dependency, bool $development = false): string
     {
-        [$start, $end] = $this->dependencySection($contents);
+        $table = $development ? 'dev-dependencies' : 'dependencies';
+        [$start, $end] = $this->dependencySection($contents, $table);
         $line = $this->line($dependency);
         if ($start === null) {
             $suffix = str_ends_with($contents, "\n") ? '' : "\n";
 
-            return $contents . $suffix . "\n[dependencies]\n{$line}\n";
+            return $contents . $suffix . "\n[{$table}]\n{$line}\n";
         }
         $prefix = substr($contents, 0, $end);
         $suffix = substr($contents, $end);
@@ -29,9 +30,10 @@ final class ManifestDependencyEditor
         return $prefix . $line . "\n" . $suffix;
     }
 
-    public function remove(string $contents, string $package): string
+    public function remove(string $contents, string $package, bool $development = false): string
     {
-        [$start, $end] = $this->dependencySection($contents);
+        $table = $development ? 'dev-dependencies' : 'dependencies';
+        [$start, $end] = $this->dependencySection($contents, $table);
         if ($start === null) {
             throw $this->notDirect($package);
         }
@@ -52,9 +54,9 @@ final class ManifestDependencyEditor
     }
 
     /** @return array{0: int|null, 1: int} */
-    private function dependencySection(string $contents): array
+    private function dependencySection(string $contents, string $table): array
     {
-        if (preg_match('/(?m)^\[dependencies\][ \t]*(?:#.*)?\r?$/', $contents, $match, PREG_OFFSET_CAPTURE) !== 1) {
+        if (preg_match('/(?m)^\[' . preg_quote($table, '/') . '\][ \t]*(?:#.*)?\r?$/', $contents, $match, PREG_OFFSET_CAPTURE) !== 1) {
             return [null, strlen($contents)];
         }
         $headerOffset = $match[0][1];
@@ -109,9 +111,11 @@ final class ManifestDependencyEditor
     {
         $parts = [];
         if ($dependency->source instanceof PathDependencySource) {
+            $parts[] = 'source = "path"';
             $parts[] = 'path = ' . $this->quote($dependency->source->path);
         } elseif ($dependency->source instanceof GitDependencySource) {
-            $parts[] = 'git = ' . $this->quote($dependency->source->url);
+            $parts[] = 'source = "git"';
+            $parts[] = 'url = ' . $this->quote($dependency->source->url);
             $parts[] = $dependency->source->selector->kind . ' = '
                 . $this->quote($dependency->source->selector->value);
         }

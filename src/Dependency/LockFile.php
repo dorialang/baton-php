@@ -61,13 +61,16 @@ final readonly class LockFile
     {
         usort(
             $dependencies,
-            static fn (LockedDependency $left, LockedDependency $right): int => strcmp($left->package, $right->package),
+            static fn (LockedDependency $left, LockedDependency $right): int => strcmp(
+                $left->package . "\0" . $left->kind->value,
+                $right->package . "\0" . $right->kind->value,
+            ),
         );
 
         return array_map(
             static fn (LockedDependency $dependency): array => [
                 'package' => $dependency->package,
-                'kind' => 'normal',
+                'kind' => $dependency->kind->value,
                 'constraint' => $dependency->constraint,
             ],
             $dependencies,

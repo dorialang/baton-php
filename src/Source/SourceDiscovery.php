@@ -297,6 +297,7 @@ final class SourceDiscovery
             'generated',
             $generated->generatedFor,
             null,
+            $generated->producer,
         );
         if ($canonicalPath !== '') {
             $canonical[$canonicalPath] = $source;

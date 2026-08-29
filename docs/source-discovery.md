@@ -28,11 +28,13 @@ creates development sources. Ordinary check/build/run plans include both
 inventories but activate only `main`. The compiler therefore knows development
 source identity without type-checking it in a production target.
 
-Slice 1 also defines an internal validated generated-source input: generated
+The compiler plan defines a validated generated-source input: generated
 scope, main/development destination, one contents-or-existing-path source, and a
 matching SHA-256 digest. Public manifests cannot declare generated roots, and
-Slice 1 neither runs processors nor writes generated files. Slice 3 will use
-this boundary without recursively treating output as handwritten source.
+processors publish output atomically under `build/generated`. Generated-main
+source participates in normal builds; generated-development source participates
+only when development scope is active. Output never triggers another processor
+pass and is never treated as handwritten source.
 
 For a resolved dependency, Baton selects the package's library target and
 discovers only its main autoload inventory. Dependency development mappings and

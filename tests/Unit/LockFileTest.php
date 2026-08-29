@@ -273,7 +273,7 @@ name = "root"
 [autoload.namespaces]
 "" = "src/"
 [dependencies]
-"acme/alpha" = { path = "../alpha", version = "^1.0" }
+"acme/alpha" = { source = "path", path = "../alpha", version = "^1.0" }
 TOML;
     }
 }

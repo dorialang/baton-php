@@ -50,7 +50,7 @@ final class ManifestLoader
 
     private ?TomlLocationIndex $locations = null;
 
-    public function load(string $projectRoot): Manifest|Schema2Manifest
+    public function load(string $projectRoot): Manifest|Schema2Manifest|WorkspaceManifest
     {
         $this->manifestPath = $projectRoot . DIRECTORY_SEPARATOR . ProjectLocator::MANIFEST_FILE;
         $contents = @file_get_contents($this->manifestPath);
@@ -66,14 +66,14 @@ final class ManifestLoader
         return $this->parse($projectRoot, $contents);
     }
 
-    public function loadContents(string $projectRoot, string $contents): Manifest|Schema2Manifest
+    public function loadContents(string $projectRoot, string $contents): Manifest|Schema2Manifest|WorkspaceManifest
     {
         $this->manifestPath = $projectRoot . DIRECTORY_SEPARATOR . ProjectLocator::MANIFEST_FILE;
 
         return $this->parse($projectRoot, $contents);
     }
 
-    private function parse(string $projectRoot, string $contents): Manifest|Schema2Manifest
+    private function parse(string $projectRoot, string $contents): Manifest|Schema2Manifest|WorkspaceManifest
     {
 
         $result = Toml::tryParse($contents, TomlVersion::V10);
@@ -160,10 +160,35 @@ final class ManifestLoader
     }
 
     /** @param array<string, mixed> $values */
-    private function schema2(string $projectRoot, array $values): Schema2Manifest
+    private function schema2(string $projectRoot, array $values): Schema2Manifest|WorkspaceManifest
     {
         $this->rejectUnknown($values, self::SCHEMA_2_TOP_LEVEL, '');
-        $this->rejectFutureTables($values);
+        $workspace = $this->workspace($values);
+        if (!array_key_exists('package', $values)) {
+            foreach (['targets', 'autoload', 'autoload-dev', 'dependencies', 'dev-dependencies', 'processors'] as $field) {
+                if (array_key_exists($field, $values)) {
+                    throw $this->error(
+                        'B0390',
+                        'Virtual Workspace Cannot Declare Package Fields',
+                        $field,
+                        "A virtual workspace may contain only `manifest-version` and `[workspace]`; move `{$field}` into a member package.",
+                    );
+                }
+            }
+            if ($workspace === null) {
+                throw $this->missing('package');
+            }
+            if ($workspace->members === []) {
+                throw $this->error(
+                    'B0391',
+                    'Workspace Members Are Missing',
+                    'workspace.members',
+                    'A virtual workspace must select at least one member package.',
+                );
+            }
+
+            return new WorkspaceManifest($workspace);
+        }
 
         $packageValues = $this->requireTable($values, 'package');
         $this->rejectUnknown($packageValues, self::SCHEMA_2_PACKAGE, 'package');
@@ -176,9 +201,31 @@ final class ManifestLoader
 
         $this->rejectMappingOverlap($autoload);
 
-        $dependencies = $this->dependencies($values);
+        $dependencies = $this->dependencies($values, 'dependencies', DependencyKind::Normal);
+        $developmentDependencies = $this->dependencies(
+            $values,
+            'dev-dependencies',
+            DependencyKind::Development,
+        );
+        foreach (array_intersect_key($dependencies, $developmentDependencies) as $duplicatePackage => $_dependency) {
+            throw $this->error(
+                'B0392',
+                'Development Dependency Is Duplicated As Normal',
+                "dev-dependencies.{$duplicatePackage}",
+                "Package `{$duplicatePackage}` is declared in both `[dependencies]` and `[dev-dependencies]`; choose one category.",
+            );
+        }
+        $processors = $this->processors($values);
 
-        return new Schema2Manifest($package, $targets, $autoload, $dependencies);
+        return new Schema2Manifest(
+            $package,
+            $targets,
+            $autoload,
+            $dependencies,
+            $developmentDependencies,
+            $processors,
+            $workspace,
+        );
     }
 
     /** @param array<string, mixed> $values */
@@ -456,33 +503,47 @@ final class ManifestLoader
     }
 
     /** @param array<string, mixed> $values */
-    private function rejectFutureTables(array $values): void
+    private function workspace(array $values): ?WorkspaceDefinition
     {
-        $future = [
-            'dev-dependencies' => ['B0322', 'Development Dependencies Land In Stage 33 Slice 3', 'Stage 33 Slice 3'],
-            'processors' => ['B0323', 'Processors Land In Stage 33 Slice 3', 'Stage 33 Slice 3'],
-            'workspace' => ['B0324', 'Workspaces Land In Stage 33 Slice 3', 'Stage 33 Slice 3'],
-        ];
-        foreach ($future as $key => [$code, $title, $stage]) {
-            if (array_key_exists($key, $values)) {
-                throw $this->error($code, $title, $key, "`{$key}` lands in {$stage}.");
-            }
+        if (!array_key_exists('workspace', $values)) {
+            return null;
         }
+        $workspace = $this->requireTable($values, 'workspace');
+        $this->rejectUnknown($workspace, ['members'], 'workspace');
+        if (!array_key_exists('members', $workspace)) {
+            throw $this->error(
+                'B0391',
+                'Workspace Members Are Missing',
+                'workspace.members',
+                'Every workspace must declare its member patterns explicitly.',
+            );
+        }
+        $members = $this->stringList($workspace['members'], 'workspace.members');
+        $normalized = [];
+        foreach ($members as $index => $pattern) {
+            $normalized[] = $this->workspacePattern($pattern, "workspace.members.{$index}");
+        }
+
+        return new WorkspaceDefinition($normalized);
     }
 
     /**
      * @param array<string, mixed> $values
      * @return array<string, DependencyDeclaration>
      */
-    private function dependencies(array $values): array
+    private function dependencies(
+        array $values,
+        string $tableName = 'dependencies',
+        DependencyKind $kind = DependencyKind::Normal,
+    ): array
     {
-        if (!array_key_exists('dependencies', $values)) {
+        if (!array_key_exists($tableName, $values)) {
             return [];
         }
-        $table = $this->requireTable($values, 'dependencies');
+        $table = $this->requireTable($values, $tableName);
         $dependencies = [];
         foreach ($table as $package => $declaration) {
-            $path = "dependencies.{$package}";
+            $path = "{$tableName}.{$package}";
             $this->assertDependencyPackageName($package, $path);
             if (!is_array($declaration) || array_is_list($declaration)) {
                 throw $this->wrongType($path, 'an inline dependency table', $declaration);
@@ -490,18 +551,30 @@ final class ManifestLoader
             $declaration = $this->stringKeyedTable($declaration, $path);
             $this->rejectUnknown(
                 $declaration,
-                ['path', 'git', 'rev', 'tag', 'branch', 'version'],
+                ['source', 'path', 'url', 'git', 'rev', 'tag', 'branch', 'version'],
                 $path,
             );
-
-            $hasPath = array_key_exists('path', $declaration);
-            $hasGit = array_key_exists('git', $declaration);
-            if ($hasPath === $hasGit) {
+            if (array_key_exists('git', $declaration)) {
                 throw $this->error(
-                    'B0330',
-                    $hasPath ? 'Dependency Source Modes Conflict' : 'Dependency Source Is Missing',
-                    $path,
-                    'Declare exactly one dependency source: `path` or `git`.',
+                    'B0393',
+                    'Git Source Locator Spelling Has Changed',
+                    "{$path}.git",
+                    "Git remains supported. Replace `git = \"...\"` with `source = \"git\"` and `url = \"...\"`.",
+                );
+            }
+            if (!array_key_exists('source', $declaration)) {
+                $help = array_key_exists('path', $declaration)
+                    ? 'Add `source = "path"` to this dependency declaration.'
+                    : 'Declare `source = "path"` or `source = "git"` explicitly.';
+                throw $this->error('B0330', 'Dependency Source Must Be Declared', $path, $help);
+            }
+            $sourceKind = $this->requireString($declaration, 'source', $path);
+            if (!in_array($sourceKind, ['path', 'git'], true)) {
+                throw $this->error(
+                    'B0394',
+                    'Dependency Source Is Unsupported',
+                    "{$path}.source",
+                    "Source transport `{$sourceKind}` is not implemented; this toolchain supports `path` and `git`.",
                 );
             }
 
@@ -520,7 +593,15 @@ final class ManifestLoader
                 }
             }
 
-            if ($hasPath) {
+            if ($sourceKind === 'path') {
+                if (array_key_exists('url', $declaration)) {
+                    throw $this->error(
+                        'B0330',
+                        'Dependency Source Modes Conflict',
+                        "{$path}.url",
+                        'A path source uses `path`, not `url`.',
+                    );
+                }
                 foreach (['rev', 'tag', 'branch'] as $selector) {
                     if (array_key_exists($selector, $declaration)) {
                         throw $this->error(
@@ -535,6 +616,14 @@ final class ManifestLoader
                 $this->assertDependencyPath($sourcePath, "{$path}.path");
                 $source = new PathDependencySource(str_replace('\\', '/', $sourcePath));
             } else {
+                if (array_key_exists('path', $declaration)) {
+                    throw $this->error(
+                        'B0330',
+                        'Dependency Source Modes Conflict',
+                        "{$path}.path",
+                        'A Git source uses `url`, not `path`.',
+                    );
+                }
                 if (!str_contains($package, '/')) {
                     throw $this->error(
                         'B0330',
@@ -543,14 +632,22 @@ final class ManifestLoader
                         'Git dependencies require a scoped `vendor/package` identity.',
                     );
                 }
-                $url = $this->requireString($declaration, 'git', $path);
+                if (!array_key_exists('url', $declaration)) {
+                    throw $this->error(
+                        'B0332',
+                        'Git Source URL Is Missing',
+                        "{$path}.url",
+                        'A dependency with `source = "git"` requires `url = "..."`.',
+                    );
+                }
+                $url = $this->requireString($declaration, 'url', $path);
                 try {
                     $url = GitUrl::canonicalize($url);
                 } catch (UnexpectedValueException $error) {
                     $title = str_contains($error->getMessage(), 'credentials')
                         ? 'Git Source Contains Credentials'
                         : 'Git Source URL Is Invalid';
-                    throw $this->error('B0332', $title, "{$path}.git", "Git URL `{$url}` is not permitted.");
+                    throw $this->error('B0332', $title, "{$path}.url", "Git URL `{$url}` is not permitted.");
                 }
                 $selectors = array_values(array_filter(
                     ['rev', 'tag', 'branch'],
@@ -564,26 +661,109 @@ final class ManifestLoader
                         'Declare exactly one Git selector: `rev`, `tag`, or `branch`.',
                     );
                 }
-                $kind = $selectors[0];
-                $value = $this->requireString($declaration, $kind, $path);
+                $selectorKind = $selectors[0];
+                $value = $this->requireString($declaration, $selectorKind, $path);
                 try {
-                    $selector = GitSelector::parse($kind, $value);
+                    $selector = GitSelector::parse($selectorKind, $value);
                 } catch (UnexpectedValueException) {
-                    $title = match ($kind) {
+                    $title = match ($selectorKind) {
                         'rev' => 'Git Revision Is Invalid',
                         'tag' => 'Git Tag Is Invalid',
                         default => 'Git Branch Is Invalid',
                     };
-                    throw $this->error('B0333', $title, "{$path}.{$kind}", "Git {$kind} `{$value}` is invalid.");
+                    throw $this->error(
+                        'B0333',
+                        $title,
+                        "{$path}.{$selectorKind}",
+                        "Git {$selectorKind} `{$value}` is invalid.",
+                    );
                 }
                 $source = new GitDependencySource($url, $selector);
             }
 
-            $dependencies[$package] = new DependencyDeclaration($package, $source, $version);
+            $dependencies[$package] = new DependencyDeclaration($package, $source, $version, $kind);
         }
         ksort($dependencies, SORT_STRING);
 
         return $dependencies;
+    }
+
+    /**
+     * @param array<string, mixed> $values
+     * @return array<string, ProcessorDeclaration>
+     */
+    private function processors(array $values): array
+    {
+        if (!array_key_exists('processors', $values)) {
+            return [];
+        }
+        $table = $this->requireTable($values, 'processors');
+        $processors = [];
+        foreach ($table as $package => $raw) {
+            $path = "processors.{$package}";
+            $this->assertDependencyPackageName($package, $path);
+            if (!is_array($raw) || array_is_list($raw)) {
+                throw $this->wrongType($path, 'an inline processor table', $raw);
+            }
+            $declaration = $this->stringKeyedTable($raw, $path);
+            $this->rejectUnknown(
+                $declaration,
+                ['source', 'path', 'url', 'git', 'rev', 'tag', 'branch', 'version', 'binary', 'attributes'],
+                $path,
+            );
+            $dependency = $this->dependencies(
+                ['processors' => [$package => array_diff_key($declaration, ['binary' => true, 'attributes' => true])]],
+                'processors',
+                DependencyKind::Processor,
+            )[$package];
+            $binary = $this->requireString($declaration, 'binary', $path);
+            if (!$this->isSlug($binary)) {
+                throw $this->error(
+                    'B0395',
+                    'Processor Declaration Is Invalid',
+                    "{$path}.binary",
+                    "Processor binary `{$binary}` must be a declared filesystem-safe target name.",
+                );
+            }
+            if (!array_key_exists('attributes', $declaration)) {
+                throw $this->missing("{$path}.attributes");
+            }
+            $attributes = $this->stringList($declaration['attributes'], "{$path}.attributes");
+            if ($attributes === []) {
+                throw $this->error(
+                    'B0396',
+                    'Processor Attribute Filter Is Empty',
+                    "{$path}.attributes",
+                    'A processor must declare at least one exact canonical attribute name.',
+                );
+            }
+            $seen = [];
+            foreach ($attributes as $attribute) {
+                if ($attribute === '' || str_contains($attribute, '*') || str_contains($attribute, '?')) {
+                    throw $this->error(
+                        'B0395',
+                        'Processor Declaration Is Invalid',
+                        "{$path}.attributes",
+                        'Processor attributes must be exact canonical Doria names; wildcards are not accepted.',
+                    );
+                }
+                if (isset($seen[$attribute])) {
+                    throw $this->error(
+                        'B0395',
+                        'Processor Declaration Is Invalid',
+                        "{$path}.attributes",
+                        "Attribute `{$attribute}` is declared more than once.",
+                    );
+                }
+                $seen[$attribute] = true;
+            }
+            sort($attributes, SORT_STRING);
+            /** @var non-empty-list<string> $attributes */
+            $processors[$package] = new ProcessorDeclaration($dependency, $binary, $attributes);
+        }
+        ksort($processors, SORT_STRING);
+
+        return $processors;
     }
 
     private function assertDependencyPackageName(string $package, string $path): void
@@ -771,6 +951,21 @@ final class ManifestLoader
                 'Autoload Mapping Is Invalid',
                 $path,
                 "Pattern `{$pattern}` is outside Baton's deterministic `*`, `?`, and `**` language.",
+            );
+        }
+
+        return $normalized;
+    }
+
+    private function workspacePattern(string $pattern, string $path): string
+    {
+        $normalized = $this->pattern($pattern, $path);
+        if ($normalized === '.' || str_ends_with($normalized, '/')) {
+            throw $this->error(
+                'B0397',
+                'Workspace Member Pattern Is Invalid',
+                $path,
+                "Pattern `{$pattern}` must select member directories relative to the workspace root.",
             );
         }
 

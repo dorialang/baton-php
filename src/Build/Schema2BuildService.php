@@ -6,6 +6,7 @@ namespace Doria\Baton\Build;
 
 use Doria\Baton\Compiler\CompilerAdapter;
 use Doria\Baton\Diagnostics\BatonError;
+use Doria\Baton\Inventory\ManagedInventoryStore;
 use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -35,6 +36,7 @@ final class Schema2BuildService
                 return $exitCode;
             }
             (new BuildReceiptWriter())->write($context, null);
+            (new ManagedInventoryStore())->recordSuccessfulOutput($context->storageRoot, $context, null);
 
             return 0;
         }
@@ -71,6 +73,7 @@ final class Schema2BuildService
         if ($explicitOutput === null) {
             (new BuildReceiptWriter())->write($context, $artifact);
         }
+        (new ManagedInventoryStore())->recordSuccessfulOutput($context->storageRoot, $context, $artifact);
 
         return 0;
     }

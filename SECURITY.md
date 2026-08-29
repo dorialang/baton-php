@@ -40,6 +40,10 @@ Baton is designed around these boundaries:
   configuration or system extensions; production distributions remove that
   runtime at the mandatory Doria-native cutover;
 - Baton does not execute PHP supplied by a Doria project;
+- workspace members, generated files, dispatcher files, and processor output
+  remain contained after canonicalization and symlink resolution;
+- external processes are launched with argument vectors, bounded output, and
+  bounded execution time rather than shell interpolation;
 - diagnostic commands must not expose secrets.
 
 Changes that weaken one of these boundaries require explicit security review and regression coverage.
@@ -51,13 +55,19 @@ are explicit and exactly locked; remote lock entries keep
 canonical source URLs but never credentials, tokens, or secret query
 parameters. Conflicting sources for one package identity are diagnosed.
 Arbitrary archive URLs and implicit build scripts are rejected. Processors are
-explicit, source-locked, visible in build output, and write beneath the build
-directory without modifying handwritten source by default.
+explicit, source-locked, visible in build output, and write only beneath their
+managed generated-source root. Publication is atomic and cannot replace
+handwritten or another processor's source.
+
+A processor is an executable program and may run arbitrary code with the user's
+account authority. Baton provides no processor sandbox, filesystem isolation,
+network isolation, or permission prompt. Review processor source and lock facts
+with the same care as any native build tool.
 
 Offline mode never reaches the network or substitutes another version. The
 global dependency cache is content-addressed by exact source identity and
 integrity facts. Git runs non-interactively with isolated configuration,
 disabled hooks and filters, no submodules, sanitized failures, immutable exact
 checkouts, and symlink-contained cache writes. Baton resolves manifests and
-source inventories but never executes dependency source. Processors remain
-deferred to Slice 3.
+source inventories but never executes ordinary dependency source. Offline mode
+never builds or launches processors and accepts only an exact complete cached result.

@@ -45,6 +45,10 @@ also verify their private runtime.
 | `baton remove <package>` | Remove a direct normal dependency and update the lock |
 | `baton update [package ...]` | Deliberately refresh all or selected dependency resolutions |
 | `baton fetch [package ...]` | Acquire exact locked content without editing project files |
+| `baton test [--filter <text>]` | Discover compiler-known tests and run each in a fresh process |
+| `baton tree [--development]` | Show the exact locked dependency tree |
+| `baton why <package> [--development]` | Explain every locked path to a package |
+| `baton project --json [--development] --offline` | Emit the local project inventory used by tooling |
 | `--binary <name>` | Select a declared binary for `check`, `build`, or `run` |
 | `--library` | Select the declared library for `check` or source-only `build` |
 | `baton doctor` | Report and verify the installed toolchain |
@@ -101,12 +105,11 @@ See [Project manifest](docs/project-manifest.md) for the field contract and path
 
 ## Package-system contract
 
-Stage 33 Slices 1 and 2 implement strict manifest schema 2, compile-time source
-discovery, explicit targets, path and Git dependency resolution, deterministic
-`Baton.lock`, a global exact-Git cache, offline operation, multi-package compiler
-plans, and lock-aware receipts. Schema 1 remains exactly compatible. Workspaces,
-development dependencies, tests, processors, `tree`, and `why` remain Stage 33
-Slice 3 work; Stage 33 is not yet complete.
+Stage 33 is complete in this bootstrap. Strict manifest schema 2 now covers
+compile-time source discovery, explicit targets, path and Git sources,
+workspaces, development dependencies, processors, tests, graph inspection, and
+deterministic project inventory. Standalone schema-1 manifests and locks retain
+their exact historical behavior; workspaces use lock schema 2.
 
 Stage 33 implements and exercises that complete product contract in this
 disposable bootstrap. It does not make PHP Baton's permanent implementation.
@@ -156,6 +159,11 @@ Read [Architecture](docs/architecture.md) for the component and ownership model.
 - [Lockfile](docs/lockfile.md)
 - [Dependency cache](docs/dependency-cache.md)
 - [Offline operation](docs/offline.md)
+- [Workspaces](docs/workspaces.md)
+- [Testing](docs/testing.md)
+- [Attribute processors](docs/processors.md)
+- [Project inventory](docs/project-inventory.md)
+- [Incremental inventory](docs/incremental-inventory.md)
 - [Phase F package and dependency model](docs/phase-f-package-and-dependency-model.md)
 - [Toolchain discovery and validation](docs/toolchain.md)
 - [Private Baton runtime](docs/runtime.md)

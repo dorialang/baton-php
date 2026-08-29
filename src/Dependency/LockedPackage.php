@@ -7,7 +7,7 @@ namespace Doria\Baton\Dependency;
 final readonly class LockedPackage
 {
     /**
-     * @param array{kind: 'path', path: string}|array{kind: 'git', url: string, selector: array{kind: string, value: string}, commit: string} $source
+     * @param array{kind: 'path'|'workspace', path: string}|array{kind: 'git', url: string, selector: array{kind: string, value: string}, commit: string} $source
      * @param list<LockedDependency> $dependencies
      */
     public function __construct(
