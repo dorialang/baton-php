@@ -1,15 +1,30 @@
 name: CI
 
 on:
+  workflow_dispatch:
   push:
+    branches:
+      - main
+      - develop
   pull_request:
+    branches:
+      - main
+      - develop
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
+env:
+  COMPOSER_NO_INTERACTION: '1'
+
 jobs:
   test:
     name: PHP 8.4 / ${{ matrix.os }}
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -29,6 +44,14 @@ jobs:
           php-version: '8.4'
           tools: composer:v2
           coverage: none
+
+      - name: Cache Composer downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache/files
+          key: composer-${{ runner.os }}-php-8.4-${{ hashFiles('composer.lock') }}
+          restore-keys: |
+            composer-${{ runner.os }}-php-8.4-
 
       - name: Validate Composer metadata
         run: composer validate --strict --no-check-publish
@@ -50,3 +73,16 @@ jobs:
 
       - name: Smoke-test Stage 33 Slice 2 through the production PHAR
         run: composer smoke:phar:stage33-slice2
+
+      - name: Upload PHAR smoke artifact
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: baton-php-phar-${{ github.sha }}
+          path: |
+            build/baton.phar
+            build/baton.phar.sha256
+            build/baton-dependencies.json
+            build/LICENSES/
+          if-no-files-found: error
+          retention-days: 7
