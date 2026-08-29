@@ -100,8 +100,8 @@ TOML);
 
         $environment = (new ProjectEnvironmentFactory())->create($project);
 
-        self::assertSame($project, $environment->commandRoot);
-        self::assertSame($project, $environment->lockRoot);
+        $this->assertSamePath($project, $environment->commandRoot);
+        $this->assertSamePath($project, $environment->lockRoot);
         self::assertNull($environment->workspace);
     }
 
@@ -117,7 +117,7 @@ TOML);
             self::fail('The declared workspace should be validated.');
         } catch (BatonError $error) {
             self::assertSame('Workspace Members Are Missing', $error->heading);
-            self::assertStringContainsString($root . '/Baton.toml', $error->body);
+            self::assertStringContainsString($this->nativePath($root . '/Baton.toml'), $error->body);
             self::assertStringContainsString('workspace.members', $error->body);
         }
     }
