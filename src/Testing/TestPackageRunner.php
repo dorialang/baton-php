@@ -12,7 +12,6 @@ use Doria\Baton\Compiler\CompilerAdapter;
 use Doria\Baton\Compiler\MetadataReader;
 use Doria\Baton\Dependency\NetworkPolicy;
 use Doria\Baton\Diagnostics\BatonError;
-use Doria\Baton\Manifest\LibraryTarget;
 use Doria\Baton\Manifest\Schema2Manifest;
 use Doria\Baton\Manifest\SelectedPackageTarget;
 use Doria\Baton\Inventory\ManagedInventoryStore;
@@ -44,7 +43,9 @@ final class TestPackageRunner
         OutputInterface $output,
     ): array {
         $profile = $release ? 'release' : 'development';
-        $selected = new SelectedPackageTarget(new LibraryTarget('baton-tests'));
+        $selected = new SelectedPackageTarget(
+            $manifest->targets->library ?? $manifest->targets->binaries[0],
+        );
         $context = (new Schema2ProjectContextFactory())->create(
             $projectRoot,
             $manifest,
@@ -229,6 +230,7 @@ final class TestPackageRunner
     ): array {
         $plan = $this->buildPlanDocument($json);
         $packages = $this->packages($plan['packages'] ?? null);
+        $selectedEntry = $this->selectedEntry($plan, $compilerPackage);
         $root = realpath($storageRoot) ?: $storageRoot;
         $project = realpath($projectRoot) ?: $projectRoot;
         $projectPrefix = $project === $root ? '' : $this->relative($root, $project) . '/';
@@ -240,6 +242,12 @@ final class TestPackageRunner
             }
             $sources = $this->sources($package['sources'] ?? null);
             $mappings = $this->namespaceMappings($package['namespaceMappings'] ?? null);
+            if ($selectedEntry !== null) {
+                $sources = array_values(array_filter(
+                    $sources,
+                    static fn (array $source): bool => $source['identity'] !== $selectedEntry,
+                ));
+            }
             if ($projectPrefix !== '') {
                 $package['root'] = $root;
                 foreach ($sources as $sourceIndex => $source) {
@@ -289,6 +297,20 @@ final class TestPackageRunner
         }
 
         return $plan;
+    }
+
+    /** @param array<string, mixed> $plan */
+    private function selectedEntry(array $plan, string $compilerPackage): ?string
+    {
+        $selected = $plan['selectedTarget'] ?? null;
+        if (!is_array($selected)
+            || ($selected['package'] ?? null) !== $compilerPackage
+            || ($selected['kind'] ?? null) !== 'binary'
+        ) {
+            return null;
+        }
+
+        return is_string($selected['entrySource'] ?? null) ? $selected['entrySource'] : null;
     }
 
     /** @return array<string, mixed> */

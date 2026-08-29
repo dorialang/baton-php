@@ -341,6 +341,56 @@ DORIA);
         self::assertArrayHasKey('acme/tested', $recordedTests);
     }
 
+    public function testBinaryOnlyPackageTestsUseTheBinaryForDiscoveryButNotTheDispatcherGraph(): void
+    {
+        $compiler = $this->compiler();
+        $root = $this->temporaryDirectory('real compiler binary tests');
+        self::assertTrue(mkdir($root . '/src', 0o755, true));
+        self::assertTrue(mkdir($root . '/tests', 0o755, true));
+        $this->write($root, 'Baton.toml', <<<'TOML'
+manifest-version = 2
+[package]
+name = "acme/binary-tested"
+version = "1.0.0"
+edition = "2026"
+[[targets.binary]]
+name = "application"
+entry = "src/main.doria"
+[autoload.namespaces]
+"" = "src/"
+[autoload-dev.namespaces]
+"" = "tests/"
+TOML);
+        $this->write($root, 'src/main.doria', <<<'DORIA'
+function main(): void
+{
+    echo "application\n";
+}
+DORIA);
+        $this->write($root, 'tests/ApplicationTests.doria', <<<'DORIA'
+#[Test]
+function applicationTest(): void
+{
+    echo "test\n";
+}
+DORIA);
+
+        $suite = $this->runBaton(
+            ['test', '--show-output', '--compiler', $compiler],
+            $root,
+        );
+        self::assertSame(0, $suite['exitCode'], $suite['stderr'] . $suite['stdout']);
+        self::assertStringContainsString('PASS acme/binary-tested applicationTest', $suite['stdout']);
+        self::assertStringContainsString("test\n", $suite['stdout']);
+        self::assertStringContainsString('Tests: 1 selected, 1 passed, 0 failed', $suite['stdout']);
+
+        $plans = glob($root . '/build/*/development/acme/binary-tested/tests/build-plan.json') ?: [];
+        self::assertCount(1, $plans);
+        $plan = (string) file_get_contents($plans[0]);
+        self::assertStringContainsString('dispatcher.doria', $plan);
+        self::assertStringNotContainsString('src/main.doria', $plan);
+    }
+
     private function compiler(): string
     {
         $compiler = getenv('DORIA_COMPILER');
