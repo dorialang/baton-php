@@ -22,7 +22,7 @@ final class RuntimeSpecTest extends TestCase
          *         assets: array<string, array{url: string, sha256: string, spcTarget: string}>
          *     },
          *     extensions: array{common: list<string>, unix: list<string>},
-         *     sources: array<string, array{url: string, sha256: string, runtime: bool, targets?: list<string>}>,
+         *     sources: array<string, array{url: string, fallbackUrls?: list<string>, sha256: string, runtime: bool, targets?: list<string>}>,
          *     capabilities: list<string>
          * } $spec
          */
@@ -66,11 +66,13 @@ final class RuntimeSpecTest extends TestCase
             array_keys($spec['sources']),
         );
         foreach ($spec['sources'] as $source) {
-            self::assertPinnedUrlAndHash($source['url'], $source['sha256']);
-            self::assertMatchesRegularExpression(
-                '/\.(?:tar\.(?:gz|xz)|tgz|zip)$/',
-                parse_url($source['url'], PHP_URL_PATH) ?: '',
-            );
+            foreach ([$source['url'], ...($source['fallbackUrls'] ?? [])] as $url) {
+                self::assertPinnedUrlAndHash($url, $source['sha256']);
+                self::assertMatchesRegularExpression(
+                    '/\.(?:tar\.(?:gz|xz)|tgz|zip)$/',
+                    parse_url($url, PHP_URL_PATH) ?: '',
+                );
+            }
         }
         self::assertTrue($spec['sources']['zlib']['runtime']);
         self::assertFalse($spec['sources']['micro']['runtime']);
@@ -79,8 +81,12 @@ final class RuntimeSpecTest extends TestCase
         self::assertTrue($spec['sources']['libiconv']['runtime']);
         self::assertTrue($spec['sources']['libiconv-win']['runtime']);
         self::assertStringStartsWith(
-            'https://mirrors.kernel.org/gnu/',
+            'https://ftp.gnu.org/gnu/',
             $spec['sources']['libiconv']['url'],
+        );
+        self::assertSame(
+            ['https://mirrors.kernel.org/gnu/libiconv/libiconv-1.19.tar.gz'],
+            $spec['sources']['libiconv']['fallbackUrls'] ?? null,
         );
         self::assertSame(
             ['linux-x86_64', 'linux-aarch64', 'macos-x86_64', 'macos-aarch64'],

@@ -78,10 +78,6 @@ downloadVerified($asset['url'], $assetPath, $asset['sha256']);
 
 $builderPath = installBuilder($assetPath, $workDirectory, str_starts_with($target, 'windows-'));
 $extensionArgument = implode(',', $extensions);
-$sourceArguments = [];
-foreach ($sources as $name => $source) {
-    $sourceArguments[] = "--custom-url={$name}:{$source['url']}";
-}
 if (isset($options['prepare'])) {
     run([
         $builderPath,
@@ -91,15 +87,29 @@ if (isset($options['prepare'])) {
     ], $workDirectory);
 }
 
-run([
-    $builderPath,
-    'download',
-    "--for-extensions={$extensionArgument}",
-    "--with-php={$spec['php']['version']}",
-    '--without-suggestions',
-    ...$sourceArguments,
-    '--no-interaction',
-], $workDirectory);
+$downloaded = false;
+$sourceUrlAttempts = sourceUrlAttempts($sources);
+foreach ($sourceUrlAttempts as $index => $sourceArguments) {
+    $exitCode = runForExitCode([
+        $builderPath,
+        'download',
+        "--for-extensions={$extensionArgument}",
+        "--with-php={$spec['php']['version']}",
+        '--without-suggestions',
+        ...$sourceArguments,
+        '--no-interaction',
+    ], $workDirectory);
+    if ($exitCode === 0) {
+        $downloaded = true;
+        break;
+    }
+    if (isset($sourceUrlAttempts[$index + 1])) {
+        fwrite(STDERR, "Source download failed; retrying with fallback URLs.\n");
+    }
+}
+if (!$downloaded) {
+    fail('Runtime source download failed for every pinned URL set.');
+}
 
 foreach ($sources as $name => $source) {
     verifyDownloadedSource($workDirectory . '/downloads', $name, $source['sha256']);
@@ -177,8 +187,8 @@ fwrite(STDOUT, "Private PHP runtime: {$runtimeBinary}" . PHP_EOL);
 fwrite(STDOUT, "Runtime manifest: {$manifestPath}" . PHP_EOL);
 
 /**
- * @param array<string, array{url: string, sha256: string, runtime: bool, targets?: list<string>}> $sources
- * @return array<string, array{url: string, sha256: string, runtime: bool, targets?: list<string>}>
+ * @param array<string, array{url: string, fallbackUrls?: list<string>, sha256: string, runtime: bool, targets?: list<string>}> $sources
+ * @return array<string, array{url: string, fallbackUrls?: list<string>, sha256: string, runtime: bool, targets?: list<string>}>
  */
 function sourcesForTarget(array $sources, string $target): array
 {
@@ -187,6 +197,31 @@ function sourcesForTarget(array $sources, string $target): array
         static fn (array $source): bool => !isset($source['targets'])
             || in_array($target, $source['targets'], true),
     );
+}
+
+/**
+ * @param array<string, array{url: string, fallbackUrls?: list<string>}> $sources
+ * @return list<list<string>>
+ */
+function sourceUrlAttempts(array $sources): array
+{
+    $attemptCount = 1;
+    foreach ($sources as $source) {
+        $attemptCount = max($attemptCount, 1 + count($source['fallbackUrls'] ?? []));
+    }
+
+    $attempts = [];
+    for ($attempt = 0; $attempt < $attemptCount; $attempt++) {
+        $arguments = [];
+        foreach ($sources as $name => $source) {
+            $urls = [$source['url'], ...($source['fallbackUrls'] ?? [])];
+            $url = $urls[min($attempt, count($urls) - 1)];
+            $arguments[] = "--custom-url={$name}:{$url}";
+        }
+        $attempts[] = $arguments;
+    }
+
+    return $attempts;
 }
 
 /** @param list<string> $arguments
@@ -408,6 +443,15 @@ function installBuilder(string $assetPath, string $workDirectory, bool $windows)
 /** @param list<string> $command */
 function run(array $command, string $workingDirectory): void
 {
+    $exitCode = runForExitCode($command, $workingDirectory);
+    if ($exitCode !== 0) {
+        fail("Process exited with status {$exitCode}: {$command[0]}");
+    }
+}
+
+/** @param list<string> $command */
+function runForExitCode(array $command, string $workingDirectory): int
+{
     fwrite(STDOUT, '> ' . implode(' ', array_map(
         static fn (string $argument): string => escapeshellarg($argument),
         $command,
@@ -416,10 +460,7 @@ function run(array $command, string $workingDirectory): void
     if (!is_resource($process)) {
         fail("Could not start process: {$command[0]}");
     }
-    $exitCode = proc_close($process);
-    if ($exitCode !== 0) {
-        fail("Process exited with status {$exitCode}: {$command[0]}");
-    }
+    return proc_close($process);
 }
 
 function copyFile(string $source, string $destination): void
