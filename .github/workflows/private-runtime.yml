@@ -3,6 +3,9 @@ name: Private PHP runtime
 on:
   workflow_dispatch:
   pull_request:
+    branches:
+      - main
+      - develop
     paths:
       - '.github/workflows/private-runtime.yml'
       - 'composer.json'
@@ -14,6 +17,7 @@ on:
       - 'tests/Distribution/**'
   push:
     branches:
+      - main
       - develop
     paths:
       - '.github/workflows/private-runtime.yml'
@@ -24,6 +28,10 @@ on:
       - 'scripts/smoke_*_phar.php'
       - 'templates/**'
       - 'tests/Distribution/**'
+
+concurrency:
+  group: private-runtime-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
