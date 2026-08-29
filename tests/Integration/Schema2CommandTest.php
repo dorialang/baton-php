@@ -163,10 +163,10 @@ final class Schema2CommandTest extends TestCase
         self::assertSame(0, $fetch['exitCode'], $fetch['stderr']);
         $tree = $this->runBaton(['tree'], $root . '/hello');
         self::assertSame(0, $tree['exitCode'], $tree['stderr']);
-        self::assertSame("hello\n", $tree['stdout']);
+        self::assertSame('hello' . PHP_EOL, $tree['stdout']);
         $why = $this->runBaton(['why', 'hello'], $root . '/hello');
         self::assertSame(0, $why['exitCode'], $why['stderr']);
-        self::assertSame("hello\n", $why['stdout']);
+        self::assertSame('hello' . PHP_EOL, $why['stdout']);
         $test = $this->runBaton(['test', '--help'], $root . '/hello');
         self::assertSame(0, $test['exitCode'], $test['stderr']);
         self::assertStringContainsString('Discover, compile, and run project tests', $test['stdout']);
