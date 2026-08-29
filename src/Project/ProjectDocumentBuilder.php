@@ -7,6 +7,7 @@ namespace Doria\Baton\Project;
 use Doria\Baton\Application;
 use Doria\Baton\Build\ActivePackageResolver;
 use Doria\Baton\Build\BuildPlanBuilder;
+use Doria\Baton\Build\BuildPlanSourceOrigin;
 use Doria\Baton\Dependency\DependencyResolver;
 use Doria\Baton\Dependency\LockFileStore;
 use Doria\Baton\Dependency\ManifestFingerprint;
@@ -340,11 +341,12 @@ final class ProjectDocumentBuilder
             ) {
                 continue;
             }
+            $identity = $package->manifest->package->compilerIdentity . ':' . $source->relativePath;
             $sources[] = [
-                'identity' => $package->manifest->package->compilerIdentity . ':' . $source->relativePath,
+                'identity' => $identity,
                 'path' => $source->canonicalPath,
                 'scope' => $source->scope,
-                'origin' => $source->origin,
+                'origin' => BuildPlanSourceOrigin::resolve($source, $identity, null),
                 'generatedFor' => $source->generatedFor,
                 'producer' => $source->producer,
                 'sha256' => $this->sourceHash($source),

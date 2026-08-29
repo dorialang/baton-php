@@ -37,6 +37,9 @@ final class BuildPlanBuilder
             }
         }
         $entry = $selected->entry();
+        $selectedEntryIdentity = $entry === null
+            ? null
+            : $identity . ':' . str_replace('\\', '/', $entry);
         $compilerIdentities = [];
         foreach ($graph === null ? [] : $graph->packages as $packageName => $package) {
             $compilerIdentities[$packageName] = $package->manifest->package->compilerIdentity;
@@ -47,6 +50,7 @@ final class BuildPlanBuilder
             $inventory,
             $compilerIdentities,
             $development,
+            $selectedEntryIdentity,
         )];
         foreach ((new ActivePackageResolver())->resolve(
             $manifest,
@@ -65,6 +69,7 @@ final class BuildPlanBuilder
                 $development
                     && $graph instanceof ResolvedWorkspaceGraph
                     && $dependency->source->kind === 'workspace',
+                $selectedEntryIdentity,
             );
         }
         /** @var list<array{identity: string, root: string, namespaceMappings: list<array<string, mixed>>, sources: list<array<string, mixed>>, dependencies: list<array<string, string>>}> $packages */
@@ -81,7 +86,7 @@ final class BuildPlanBuilder
                 'package' => $identity,
                 'name' => $selected->name(),
                 'kind' => $selected->kind(),
-                'entrySource' => $entry === null ? null : $identity . ':' . str_replace('\\', '/', $entry),
+                'entrySource' => $selectedEntryIdentity,
                 'activeScopes' => $activeScopes,
             ],
             'packages' => $packages,
@@ -103,6 +108,7 @@ final class BuildPlanBuilder
         SourceInventory $inventory,
         array $compilerIdentities,
         bool $includeDevelopment,
+        ?string $selectedEntryIdentity,
     ): array {
         /** @var list<array{prefix: string, path: string, scope: string, generatedFor: string|null}> $mappings */
         $mappings = array_map(
@@ -142,13 +148,21 @@ final class BuildPlanBuilder
         $identity = $manifest->package->compilerIdentity;
         /** @var list<array{identity: string, path: string, scope: string, origin: string, generatedFor: string|null}> $sources */
         $sources = array_map(
-            static fn (DiscoveredSource $source): array => [
-                'identity' => $identity . ':' . $source->relativePath,
-                'path' => $source->relativePath,
-                'scope' => $source->scope,
-                'origin' => $source->origin,
-                'generatedFor' => $source->generatedFor,
-            ],
+            static function (DiscoveredSource $source) use ($identity, $selectedEntryIdentity): array {
+                $sourceIdentity = $identity . ':' . $source->relativePath;
+
+                return [
+                    'identity' => $sourceIdentity,
+                    'path' => $source->relativePath,
+                    'scope' => $source->scope,
+                    'origin' => BuildPlanSourceOrigin::resolve(
+                        $source,
+                        $sourceIdentity,
+                        $selectedEntryIdentity,
+                    ),
+                    'generatedFor' => $source->generatedFor,
+                ];
+            },
             array_values(array_filter(
                 $inventory->sources,
                 static fn (DiscoveredSource $source): bool => $includeDevelopment

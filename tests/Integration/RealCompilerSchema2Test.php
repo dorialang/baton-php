@@ -391,6 +391,105 @@ DORIA);
         self::assertStringNotContainsString('src/main.doria', $plan);
     }
 
+    public function testAggregateToolingPlanNormalizesNonSelectedBinaryEntries(): void
+    {
+        $compiler = $this->compiler();
+        $root = $this->temporaryDirectory('real compiler aggregate tooling');
+        self::assertTrue(mkdir($root . '/packages/library/src', 0o755, true));
+        self::assertTrue(mkdir($root . '/tools/processor/src', 0o755, true));
+        $this->write($root, 'Baton.toml', <<<'TOML'
+manifest-version = 2
+[workspace]
+members = ["packages/*", "tools/*"]
+TOML);
+        $this->write($root, 'packages/library/Baton.toml', <<<'TOML'
+manifest-version = 2
+[package]
+name = "acme/library"
+version = "1.0.0"
+edition = "2026"
+[targets.library]
+name = "library"
+[autoload.namespaces]
+"" = "src/"
+TOML);
+        $this->write($root, 'packages/library/src/Library.doria', "class Library {}\n");
+        $this->write($root, 'tools/processor/Baton.toml', <<<'TOML'
+manifest-version = 2
+[package]
+name = "acme/processor"
+version = "1.0.0"
+edition = "2026"
+[[targets.binary]]
+name = "processor"
+entry = "src/main.doria"
+[autoload.namespaces]
+"" = "src/"
+TOML);
+        $this->write($root, 'tools/processor/src/main.doria', "function main(): void {}\n");
+
+        $install = $this->runBaton(['install', '--offline'], $root);
+        self::assertSame(0, $install['exitCode'], $install['stderr']);
+        $project = $this->runBaton(
+            ['project', '--json', '--workspace', '--development', '--offline'],
+            $root,
+        );
+        self::assertSame(0, $project['exitCode'], $project['stderr']);
+        $document = json_decode($project['stdout'], true, flags: JSON_THROW_ON_ERROR);
+        self::assertIsArray($document);
+        self::assertIsArray($document['toolingBuildPlan'] ?? null);
+        $plan = $document['toolingBuildPlan'];
+        $processor = $this->packageDocument($plan['packages'] ?? null, 'identity', 'acme/processor');
+        self::assertSame('explicit', $this->firstSourceOrigin($processor));
+        $projectProcessor = $this->packageDocument(
+            $document['packages'] ?? null,
+            'compilerPackage',
+            'acme/processor',
+        );
+        self::assertSame('explicit', $this->firstSourceOrigin($projectProcessor));
+
+        $planPath = $root . '/tooling-build-plan.json';
+        self::assertNotFalse(file_put_contents(
+            $planPath,
+            json_encode($plan, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR),
+        ));
+        $check = new Process([$compiler, 'check', '--build-plan', $planPath], $root);
+        self::assertSame(0, $check->run(), $check->getErrorOutput());
+    }
+
+    /** @return array<string, mixed> */
+    private function packageDocument(mixed $packages, string $key, string $value): array
+    {
+        self::assertIsArray($packages);
+        foreach ($packages as $package) {
+            self::assertIsArray($package);
+            if (($package[$key] ?? null) === $value) {
+                $document = [];
+                foreach ($package as $field => $fieldValue) {
+                    self::assertIsString($field);
+                    $document[$field] = $fieldValue;
+                }
+
+                return $document;
+            }
+        }
+
+        self::fail("Package `{$value}` was not found.");
+    }
+
+    /** @param array<string, mixed> $package */
+    private function firstSourceOrigin(array $package): string
+    {
+        $sources = $package['sources'] ?? null;
+        self::assertIsArray($sources);
+        $source = $sources[0] ?? null;
+        self::assertIsArray($source);
+        $origin = $source['origin'] ?? null;
+        self::assertIsString($origin);
+
+        return $origin;
+    }
+
     private function compiler(): string
     {
         $compiler = getenv('DORIA_COMPILER');
