@@ -8,6 +8,7 @@ use Doria\Baton\Diagnostics\BatonError;
 use Doria\Baton\Manifest\ManifestLoader;
 use Doria\Baton\Manifest\Schema2Manifest;
 use Doria\Baton\Manifest\WorkspaceManifest;
+use Doria\Baton\Manifest\WorkspaceDeclarationProbe;
 use Doria\Baton\Project\ProjectLocator;
 
 final class ProjectEnvironmentFactory
@@ -17,10 +18,14 @@ final class ProjectEnvironmentFactory
         $nearest = (new ProjectLocator())->locate($startDirectory);
         $loader = new ManifestLoader();
         $nearestManifest = $loader->load($nearest);
+        $workspaceProbe = new WorkspaceDeclarationProbe();
         $directory = $nearest;
         while (true) {
-            if (is_file($directory . DIRECTORY_SEPARATOR . ProjectLocator::MANIFEST_FILE)) {
-                $candidate = $loader->load($directory);
+            $manifestPath = $directory . DIRECTORY_SEPARATOR . ProjectLocator::MANIFEST_FILE;
+            if (is_file($manifestPath)) {
+                $candidate = $directory === $nearest
+                    ? $nearestManifest
+                    : ($workspaceProbe->declares($manifestPath) ? $loader->load($directory) : null);
                 $workspaceDeclared = $candidate instanceof WorkspaceManifest
                     || ($candidate instanceof Schema2Manifest && $candidate->workspace !== null);
                 if ($workspaceDeclared) {

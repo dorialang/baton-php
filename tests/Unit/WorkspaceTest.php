@@ -91,6 +91,37 @@ TOML);
         }
     }
 
+    public function testUnrelatedInvalidAncestorManifestDoesNotOverrideNearestProject(): void
+    {
+        $root = $this->temporaryDirectory('unrelated ancestor manifest');
+        $this->write($root . '/Baton.toml', '');
+        $project = $root . '/examples/tui';
+        $this->package($project, 'acme/tui');
+
+        $environment = (new ProjectEnvironmentFactory())->create($project);
+
+        self::assertSame($project, $environment->commandRoot);
+        self::assertSame($project, $environment->lockRoot);
+        self::assertNull($environment->workspace);
+    }
+
+    public function testMalformedDeclaredAncestorWorkspaceRemainsAuthoritative(): void
+    {
+        $root = $this->temporaryDirectory('malformed ancestor workspace');
+        $this->write($root . '/Baton.toml', "manifest-version = 2\n[workspace]\n");
+        $project = $root . '/packages/tui';
+        $this->package($project, 'acme/tui');
+
+        try {
+            (new ProjectEnvironmentFactory())->create($project);
+            self::fail('The declared workspace should be validated.');
+        } catch (BatonError $error) {
+            self::assertSame('Workspace Members Are Missing', $error->heading);
+            self::assertStringContainsString($root . '/Baton.toml', $error->body);
+            self::assertStringContainsString('workspace.members', $error->body);
+        }
+    }
+
     private function package(
         string $root,
         string $name,
