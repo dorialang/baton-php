@@ -68,7 +68,9 @@ final class ProjectDocumentBuilder
         ];
 
         $lockPath = $selection->lockRoot . DIRECTORY_SEPARATOR . LockFileStore::FILE;
-        $lockHash = $this->fileHash($lockPath, 'Baton Lock Is Invalid');
+        $lockHash = is_file($lockPath)
+            ? $this->fileHash($lockPath, 'Baton Lock Is Invalid')
+            : $this->hashValue(null);
         $packages = $this->packageDocuments($visible, $development);
         $generated = $this->generatedDocuments($registry, $development);
         $inventoryHash = $this->hashValue([$packages, $generated]);

@@ -15,6 +15,10 @@ fingerprints. It may contain canonical local roots needed to read sources, but
 never source bodies, credentials, environment values, processor logs, or cache
 implementation keys.
 
+Packages without dependencies do not require `Baton.lock`. Their lock fingerprint
+is the SHA-256 digest of JSON `null`, so creating or removing a lock invalidates the
+project snapshot without making lockless packages invalid.
+
 The command validates manifests, the lock, and exact cached dependency content.
 It invokes no compiler, runs no processor, edits no project file, and performs
 no network operation in offline mode. Generated sources appear only when the

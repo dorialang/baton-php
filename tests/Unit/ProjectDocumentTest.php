@@ -17,6 +17,57 @@ use Doria\Baton\Workspace\ProjectSelection;
 
 final class ProjectDocumentTest extends TestCase
 {
+    public function testProjectDocumentSupportsLocklessPackagesWithoutDependencies(): void
+    {
+        $root = $this->temporaryDirectory('lockless project document');
+        $this->write($root . '/src/BorderPart.doria', "namespace Acme\\Rendering;\nenum BorderPart {}\n");
+        $this->write($root . '/src/WindowStyles.doria', "namespace Acme\\Rendering;\nclass WindowStyles {}\n");
+        $this->write($root . '/Baton.toml', <<<'TOML'
+manifest-version = 2
+[package]
+name = "acme/app"
+version = "1.0.0"
+edition = "2026"
+[targets.library]
+name = "app"
+[autoload.namespaces]
+"Acme\\" = "src/"
+TOML);
+        $manifest = (new ManifestLoader())->load($root);
+        self::assertInstanceOf(Schema2Manifest::class, $manifest);
+
+        $document = (new ProjectDocumentBuilder())->build(
+            new ProjectSelection($root, $root, $manifest, null, false),
+            true,
+            NetworkPolicy::Offline,
+        );
+
+        self::assertFileDoesNotExist($root . '/Baton.lock');
+
+        $fingerprints = $document['fingerprints'];
+        self::assertIsArray($fingerprints);
+        self::assertSame(hash('sha256', 'null'), $fingerprints['lock']);
+
+        $packages = $document['packages'];
+        self::assertIsArray($packages);
+        $package = $packages[0];
+        self::assertIsArray($package);
+        $sources = $package['sources'];
+        self::assertIsArray($sources);
+
+        $identities = [];
+        foreach ($sources as $source) {
+            self::assertIsArray($source);
+            self::assertIsString($source['identity']);
+            $identities[] = $source['identity'];
+        }
+
+        self::assertSame(
+            ['acme/app:src/BorderPart.doria', 'acme/app:src/WindowStyles.doria'],
+            $identities,
+        );
+    }
+
     public function testProjectDocumentUsesTheCompilerVisibleGraphAndGeneratedInventory(): void
     {
         $workspace = $this->temporaryDirectory('project document');
