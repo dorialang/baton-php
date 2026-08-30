@@ -1315,9 +1315,21 @@ Workspaces, development dependencies, graph commands, incremental inventory,
 `baton test`, explicit processor orchestration, generated-source writes, and
 project inventory are implemented.
 
-Stage 33 and Phase F are complete. Stage 34 single class inheritance is next.
-The mandatory Pre-Stage-45 Doria-native Baton transition remains scheduled and
-must parity-port this frozen observable contract before the unsuffixed release.
+Stage 33 and Phase F are complete.
+
+### Native Testing Foundation Slice 1 - Complete
+
+Compiler-authored schema 3 test inventory now unifies `#[Test]` methods and
+behavioral `describe`/`it`/`test` declarations. Baton discovers, filters, and
+dispatches those records without parsing Doria source.
+
+### Native Testing Foundation Slice 2 - Next
+
+Expectation execution and final test reporting land next. The broader Native
+Testing Foundation remains in progress, and Stage 34 single class inheritance
+waits for the foundation to complete. The mandatory Pre-Stage-45 Doria-native
+Baton transition remains scheduled and must parity-port this frozen observable
+contract before the unsuffixed release.
 
 ### Add
 

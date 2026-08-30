@@ -49,7 +49,14 @@ $require('src/Commands/ProjectCommand.php', ['ProjectDocumentBuilder', '`baton p
 $require('src/Project/ProjectDocumentBuilder.php', ['GeneratedSourceRegistry', 'ActivePackageResolver', 'toolingBuildPlan', 'fingerprints']);
 $require('src/Inventory/ManagedInventoryStore.php', ['inventory.json', 'compilerRevision', 'buildPlanSha256', 'recordProcessors', 'recordTests']);
 $require('docs/processors.md', ['does not provide a processor sandbox', 'never trigger a recursive processor pass', 'Offline mode never builds or executes']);
-$require('docs/baton-php-development-plan.md', ['### Stage 33 Slice 3 - Complete', 'Stage 33 and Phase F are complete', 'Stage 34 single class inheritance is next']);
+$require('docs/baton-php-development-plan.md', [
+    '### Stage 33 Slice 3 - Complete',
+    'Stage 33 and Phase F are complete',
+    '### Native Testing Foundation Slice 1 - Complete',
+    '### Native Testing Foundation Slice 2 - Next',
+    'Stage 34 single class inheritance',
+    'waits for the foundation to complete',
+]);
 $require('README.md', ['Stage 33 is complete', 'mandatory Pre-Stage-45']);
 
 $application = $read('src/Application.php');
