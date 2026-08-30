@@ -151,7 +151,7 @@ baton build --release
 
 The environment must not provide Rust, Cargo, PHP, Composer, a repository checkout, or a previous Doria installation. Tests also place an incompatible `doriac` earlier on `PATH` to prove the bundled compiler wins.
 
-Exercise compiler and program failure, forwarded arguments, interactive standard input, Ctrl+C, corrupt metadata, missing components, and modified component hashes.
+Exercise compiler and program failure, forwarded arguments, interactive standard input, Ctrl+C, corrupt metadata, missing components, modified component hashes, and `baton doctor` after every packaging/build cache has been removed. The doctor run must pass its native compiler/runtime/linker probe from the extracted toolchain alone.
 
 ## Published materials
 

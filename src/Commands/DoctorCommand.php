@@ -9,6 +9,7 @@ use Doria\Baton\Dependency\CacheRootLocator;
 use Doria\Baton\Dependency\GitClient;
 use Doria\Baton\Diagnostics\BatonError;
 use Doria\Baton\Project\ProjectLocator;
+use Doria\Baton\Toolchain\NativeCompilerProbe;
 use Doria\Baton\Toolchain\Platform;
 use Doria\Baton\Toolchain\ToolchainManifest;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -51,6 +52,14 @@ final class DoctorCommand extends BatonCommand
                 $toolchain->identity->toolchainVersion
             );
             $this->line($output, 'PASS', 'doriac target', $toolchain->identity->target);
+            $nativeFailure = (new NativeCompilerProbe())->check($toolchain->compilerPath);
+            $this->line(
+                $output,
+                $nativeFailure === null ? 'PASS' : 'FAIL',
+                'native compiler',
+                $nativeFailure ?? 'runtime archive and linker verified',
+            );
+            $failed = $nativeFailure !== null;
             if ($toolchain->manifest === null) {
                 $this->line($output, 'WARNING', 'toolchain manifest', 'not used');
                 $this->line($output, 'WARNING', 'component hashes', 'not available');

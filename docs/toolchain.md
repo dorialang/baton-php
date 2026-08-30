@@ -120,6 +120,12 @@ and runtime paths, host identity, the selected compiler, `doria-lsp`, manifest
 and hash status, and writable build and cache locations using `PASS`, `WARNING`,
 and `FAIL`.
 
+Compiler identity alone is not a health check. `doctor` also compiles a fixed
+minimal Doria program for the native host target, verifies that `doriac`
+produced an executable, and reports the first structured compiler diagnostic if
+the runtime archive or linker is unavailable. It never parses human diagnostic
+text or user source during this probe.
+
 The command can run outside a Doria project and must not print secrets or unrelated environment values.
 Outside a project, the build-location check is a warning rather than a failure.
 When source development uses `--compiler` instead of an installed manifest,

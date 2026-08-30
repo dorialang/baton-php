@@ -786,6 +786,7 @@ Release channel
 Baton executable path
 Private PHP runtime path
 doriac path and version
+doriac native compile/runtime/linker probe
 doria-lsp path and version
 Host platform
 Host architecture
@@ -801,6 +802,10 @@ PASS
 WARNING
 FAIL
 ```
+
+The compiler probe uses a fixed minimal source and structured JSON diagnostics.
+An identity-compatible compiler that cannot produce a native executable is a
+`FAIL`, not a healthy toolchain.
 
 ### Acceptance Criteria
 

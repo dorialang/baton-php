@@ -28,8 +28,9 @@ with no Baton PHP payload. Neither layout requires Rust, Cargo, system PHP,
 Composer, or a repository checkout.
 
 Run `baton doctor` after installation to verify component versions and hashes,
-host compatibility, and writable project/cache locations. Bootstrap prereleases
-also verify their private runtime.
+host compatibility, a real native compiler/runtime/linker probe, and writable
+project/cache locations. Bootstrap prereleases also verify their private
+runtime.
 
 ## Commands
 
