@@ -6,6 +6,7 @@ namespace Doria\Baton\Build;
 
 use Doria\Baton\Dependency\PathContentFingerprint;
 use Doria\Baton\Diagnostics\BatonError;
+use Doria\Baton\Dependency\ResolvedWorkspaceGraph;
 
 final readonly class BuildReceiptWriter
 {
@@ -60,6 +61,26 @@ final readonly class BuildReceiptWriter
             'pathDependencies' => $this->pathDependencies($context),
             'artifact' => $artifactRecord,
         ];
+        if ($context->graph instanceof ResolvedWorkspaceGraph) {
+            $document['workspace'] = [
+                'lockSha256' => $context->lockSha256,
+                'selectedMember' => $context->manifest->package->compilerIdentity,
+            ];
+        }
+        $generatedSources = $this->generatedSources($context);
+        if ($generatedSources !== []) {
+            $document['generatedSources'] = $generatedSources;
+        }
+        if ($context->processorFacts !== []) {
+            $document['processors'] = array_map(static fn (array $fact): array => [
+                'owningPackage' => $fact['owner'],
+                'package' => $fact['processor'],
+                'sourceIdentitySha256' => $fact['sourceIdentitySha256'],
+                'binarySha256' => $fact['binarySha256'],
+                'requestSha256' => $fact['requestSha256'],
+                'responseSha256' => $fact['responseSha256'],
+            ], $context->processorFacts);
+        }
         $json = json_encode(
             $document,
             JSON_PRETTY_PRINT
@@ -90,5 +111,31 @@ final readonly class BuildReceiptWriter
         }
 
         return $dependencies;
+    }
+
+    /**
+     * @return list<array{producerPackage: string, owningPackage: string, generatedFor: string, relativePath: string, contentSha256: string}>
+     */
+    private function generatedSources(Schema2ProjectContext $context): array
+    {
+        $sources = [];
+        foreach ($context->generatedSources as $source) {
+            if ($source->producer === null) {
+                continue;
+            }
+            $sources[] = [
+                'producerPackage' => $source->producer,
+                'owningPackage' => $source->owner ?? $context->manifest->package->compilerIdentity,
+                'generatedFor' => $source->generatedFor,
+                'relativePath' => str_replace('\\', '/', $source->relativePath),
+                'contentSha256' => $source->contentHash,
+            ];
+        }
+        usort($sources, static fn (array $left, array $right): int => strcmp(
+            $left['owningPackage'] . "\0" . $left['generatedFor'] . "\0" . $left['relativePath'],
+            $right['owningPackage'] . "\0" . $right['generatedFor'] . "\0" . $right['relativePath'],
+        ));
+
+        return $sources;
     }
 }

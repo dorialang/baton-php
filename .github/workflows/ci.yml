@@ -36,7 +36,7 @@ jobs:
 
     steps:
       - name: Check out Baton
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
@@ -46,7 +46,7 @@ jobs:
           coverage: none
 
       - name: Cache Composer downloads
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.composer/cache/files
           key: composer-${{ runner.os }}-php-8.4-${{ hashFiles('composer.lock') }}
@@ -74,9 +74,12 @@ jobs:
       - name: Smoke-test Stage 33 Slice 2 through the production PHAR
         run: composer smoke:phar:stage33-slice2
 
+      - name: Smoke-test Stage 33 Slice 3 through the production PHAR
+        run: composer smoke:phar:stage33-slice3
+
       - name: Upload PHAR smoke artifact
         if: runner.os == 'Linux'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: baton-php-phar-${{ github.sha }}
           path: |

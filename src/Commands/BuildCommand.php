@@ -9,9 +9,7 @@ use Doria\Baton\Build\Schema2ProjectContextFactory;
 use Doria\Baton\Compiler\CompilerAdapter;
 use Doria\Baton\Diagnostics\BatonError;
 use Doria\Baton\Manifest\Manifest;
-use Doria\Baton\Manifest\ManifestLoader;
 use Doria\Baton\Manifest\TargetSelector;
-use Doria\Baton\Project\ProjectLocator;
 use Doria\Baton\Toolchain\ToolchainSelection;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
@@ -42,12 +40,17 @@ final class BuildCommand extends BatonCommand
         TargetOptions::configure($this);
         CompilerOptions::configure($this);
         DependencyOptions::configureOffline($this);
+        WorkspaceOptions::configure($this, false);
     }
 
     protected function handle(InputInterface $input, OutputInterface $output): int
     {
-        $projectRoot = (new ProjectLocator())->locate(getcwd() ?: '.');
-        $manifest = (new ManifestLoader())->load($projectRoot);
+        $selection = WorkspaceOptions::select($input, false, 'build');
+        $projectRoot = $selection->projectRoot;
+        $manifest = $selection->manifest;
+        if ($manifest === null) {
+            throw new \LogicException('Package build requires one selected package.');
+        }
         [$binary, $library] = TargetOptions::read($input);
         $selected = (new TargetSelector())->select($manifest, $binary, $library, 'build');
         $toolchain = CompilerOptions::locate($input);
@@ -77,6 +80,8 @@ final class BuildCommand extends BatonCommand
             $toolchain,
             $profile,
             network: DependencyOptions::network($input),
+            workspace: $selection->workspace,
+            output: $output,
         );
 
         return (new Schema2BuildService())->build($context, $output, $explicitOutput);

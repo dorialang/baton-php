@@ -63,6 +63,10 @@ Commands such as `doctor` that do not require a project skip project discovery. 
 | `Dependency` | Resolve one-version graphs, strict locks, exact Git cache entries, and offline policy |
 | `Source` | Discover contained main/development source inventories without parsing Doria |
 | `Build` | Select managed paths and write compiler plans and receipts atomically |
+| `Workspace` | Discover members, select packages, and preserve workspace lock authority |
+| `Processor` | Filter compiler metadata, execute exact processors, and publish generated source |
+| `Testing` | Validate unified schema-3 test records, compile one direct-call dispatcher, and isolate test processes |
+| `Inventory` | Maintain disposable content-hashed project state |
 | `Toolchain` | Discover components and verify identity, target, and hashes |
 | `Compiler` | Start `doriac` safely and preserve process behavior |
 | `Templates` | Generate Baton-owned project scaffolds |
@@ -155,9 +159,11 @@ tests, and production release-ownership transfer to `dorialang/baton`.
 The unsuffixed `2026.03.1` toolchain may not ship before this gate passes.
 
 The accepted target architecture is detailed in [Phase F package and dependency
-model](phase-f-package-and-dependency-model.md). Stage 33 Slices 1 and 2 now
-implement schema 2 manifests, targets, source discovery, dependency resolution,
-strict locks, exact Git caching, offline operation, multi-package compiler plans,
-and receipts while retaining exact schema-1 behavior. Workspaces, development
-dependencies, tests, processors, graph commands, and generated-source writes
-remain Slice 3.
+model](phase-f-package-and-dependency-model.md). Stage 33 and Phase F are
+complete in this bootstrap while exact schema-1 behavior remains intact. Native
+Testing Foundation Slices 1 and 2 are complete, Slice 3 is next, and the broader
+foundation remains in progress. Baton keeps assertions behind the same generic
+isolated-process boundary and neither parses assertion stderr nor classifies the
+compiler's structured assertion outcome. Stage 34 single class inheritance
+waits for the foundation to complete. The mandatory Pre-Stage-45 native Baton
+transition remains scheduled and blocks the unsuffixed release.

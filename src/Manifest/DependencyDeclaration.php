@@ -10,6 +10,7 @@ final readonly class DependencyDeclaration
         public string $package,
         public DependencySource $source,
         public ?PackageVersionConstraint $version,
+        public DependencyKind $kind = DependencyKind::Normal,
     ) {
     }
 }

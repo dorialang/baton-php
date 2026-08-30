@@ -19,4 +19,9 @@ filters, or submodules. Cache paths are derived from hashes rather than package
 or selector text, and symlink boundaries cannot redirect cache writes.
 
 Path dependencies stay at their declared live locations and never enter this
-cache. Slice 2 adds no cache pruning or project-local package store.
+cache. Normal, development, and processor Git sources share the same exact
+cache rules. Baton adds no project-local package store or cache pruning command.
+
+Processor response state is separate private build state under
+`build/.baton/processors`; it is keyed by exact protocol, compiler, graph,
+source, binary, filter, and request facts rather than by timestamps.

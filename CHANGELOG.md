@@ -16,7 +16,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Dor
   symlink containment checks, and stable source identities.
 - Compiler build-plan schema 1 emission for schema-2 projects, target-scoped
   build layouts, deterministic build receipts, and source-only library builds.
-- An internal validated generated-source boundary reserved for Stage 33 Slice 3.
+- Atomic processor-generated source publication with strict provenance and stale-output validation.
 - The Baton command boundary and Doria-style diagnostics.
 - Project creation with a versioned `Baton.toml` and accepted Doria template.
 - Upward project discovery and `baton check`.
@@ -36,14 +36,34 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Dor
   centralized offline operation, and transactional `install`, `add`, `remove`,
   `update`, and `fetch` workflows.
 - Multi-package compiler plans and lock/path identity in build receipts.
+- Virtual and package-bearing workspaces with deterministic member discovery,
+  package selection, and strict workspace lock schema 2.
+- Development dependencies and processor dependencies using the same typed path
+  and Git source model as normal dependencies.
+- Compiler-metadata-driven `baton test`, one dispatcher compilation per package,
+  and one fresh process per selected test.
+- Strict metadata-schema-3 discovery unifying low-level `#[Test]` functions and
+  nested behavioral tests, with stable identity dispatch and display-name filtering.
+- Native Testing Slice 2 compiler-owned core `expect` and `fail` assertions through the existing
+  isolated test-process boundary, including generic failure reporting, raw
+  failed-output replay, and continuation to later tests without source or
+  assertion-outcome parsing in Baton.
+- `baton tree`, `baton why`, and deterministic `baton project --json` tooling inventory.
+- Private content-hashed project, processor, generated-source, and test inventory.
 
 ### Changed
 
 - `baton new` now creates a schema-2 local, non-publishable binary project.
 - Existing schema-1 projects retain their exact manifest interpretation,
   compiler invocation, command behavior, and build layout.
+- Schema-2 dependency declarations now separate transport from location:
+  `source = "git"` uses `url`, while `source = "path"` uses `path`. The former
+  `git =` spelling is rejected with migration guidance.
 
 ### Deferred
 
-- Workspaces, development dependencies, tests, processors, graph commands, and
-  generated-source writes remain in Stage 33 Slice 3.
+- Nested/composable workspaces, package registries, verified archives,
+  publishing, processor sandboxing, recursive processors, and parallel tests.
+- The mandatory Pre-Stage-45 parity port from this PHP bootstrap to native Baton.
+- Native Testing Slice 3 assertion classification, hierarchical presentation,
+  collection/Error expectations, and bounded difference rendering.

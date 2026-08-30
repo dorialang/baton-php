@@ -63,7 +63,7 @@ jobs:
 
     steps:
       - name: Check out Baton
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
@@ -100,8 +100,13 @@ jobs:
         run: |
           "${{ matrix.executable }}" -n scripts/smoke_stage33_slice2_phar.php build/baton.phar
 
+      - name: Smoke-test Stage 33 Slice 3 with only the private runtime
+        shell: bash
+        run: |
+          "${{ matrix.executable }}" -n scripts/smoke_stage33_slice3_phar.php build/baton.phar
+
       - name: Upload runtime audit artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: baton-private-runtime-${{ matrix.target }}
           path: |

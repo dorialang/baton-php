@@ -22,12 +22,22 @@ final readonly class BuildLayout
         string $hostTarget,
         string $profile,
         string $targetName,
+        ?string $compilerPackage = null,
     ) {
-        $this->directory = $projectRoot
+        $directory = $projectRoot
             . DIRECTORY_SEPARATOR . 'build'
             . DIRECTORY_SEPARATOR . $hostTarget
-            . DIRECTORY_SEPARATOR . $profile
-            . DIRECTORY_SEPARATOR . $targetName;
+            . DIRECTORY_SEPARATOR . $profile;
+        if ($compilerPackage !== null) {
+            foreach (explode('/', $compilerPackage) as $segment) {
+                if (preg_match('/^[a-z0-9][a-z0-9-]*$/D', $segment) !== 1) {
+                    throw $this->error('Compiler Package Identity Is Invalid', $compilerPackage);
+                }
+                $directory .= DIRECTORY_SEPARATOR . $segment;
+            }
+        }
+        $directory .= DIRECTORY_SEPARATOR . $targetName;
+        $this->directory = $directory;
         $this->createContainedDirectory($projectRoot);
         $this->buildPlan = $this->directory . DIRECTORY_SEPARATOR . 'build-plan.json';
         $this->receipt = $this->directory . DIRECTORY_SEPARATOR . 'build.json';

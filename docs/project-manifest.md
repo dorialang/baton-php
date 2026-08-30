@@ -74,24 +74,43 @@ Paths are project-relative and contained. Patterns support only `*`, `?`, and
 `**`; exclude wins.
 
 Ordinary `check`, `build`, and `run` activate main sources only. Development
-sources are still inventoried in the compiler plan but remain inactive until
-Stage 33 Slice 3 orchestration. See [Source discovery](source-discovery.md).
+sources are inventoried but become active only for tests or explicit
+development tooling. See [Source discovery](source-discovery.md).
 
-## Normal Dependencies
+## Dependencies And Processors
 
-Schema 2 accepts `[dependencies]` entries with exactly one `path` or `git`
-source. Git entries require exactly one `rev`, `tag`, or `branch`; either source
-may add a `version` constraint. Dependency keys identify the package declared by
-the dependency manifest, and every dependency package requires a library target.
+Schema 2 separates source transport from source location. `source` is required.
+Path sources use `path`; Git sources use `url` and exactly one of `rev`, `tag`,
+or `branch`. Either may add a `version` constraint.
 
 ```toml
 [dependencies]
-"acme/core" = { path = "../core", version = "^1.0" }
-"acme/log" = { git = "ssh://git@github.com/acme/log.git", rev = "7de4..." }
+"acme/core" = { source = "path", path = "../core", version = "^1.0" }
+"acme/log" = { source = "git", url = "ssh://git@github.com/acme/log.git", rev = "7de4..." }
+
+[dev-dependencies]
+"acme/test-support" = { source = "path", path = "../test-support" }
+
+[processors]
+"acme/routes" = {
+    source = "git",
+    url = "https://github.com/acme/routes.git",
+    tag = "v1.2.0",
+    binary = "routes",
+    attributes = ["Acme\\Metadata\\Route"],
+}
 ```
 
-See [Dependencies](dependencies.md) for source, constraint, and command rules.
-Development dependencies, processors, and workspaces remain Slice 3 fields.
+The former `git = "..."` locator is rejected with a diagnostic showing
+`source = "git"` and `url = "..."`; it is not a permanent alias. See
+[Dependencies](dependencies.md) and [Attribute processors](processors.md).
+
+## Workspace
+
+`[workspace]` declares a required `members` array. A manifest without
+`[package]` is a virtual root; one with `[package]` makes the root the implicit
+`.` member. Members keep independent package and `internal` boundaries and share
+one workspace-root lock. See [Workspaces](workspaces.md).
 
 ## Schema 1 Compatibility
 

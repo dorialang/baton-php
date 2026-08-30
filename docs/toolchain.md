@@ -160,3 +160,15 @@ Doria parsing and semantics. Schema-1 projects keep their historical direct
 The build plan is machine-local and written beneath the selected target's
 managed build directory. It is not `toolchain.json`, `build.json`, or a package
 lockfile. See [Compiler build plans](build-plan.md).
+
+## Project tooling boundary
+
+`baton project --json --development --offline` emits the complete local project
+inventory consumed by `doria-lsp`. The language server invokes Baton
+asynchronously, consumes the strict JSON document, and overlays unsaved editor
+buffers on the supplied compiler graph. It does not parse `Baton.toml`,
+`Baton.lock`, processor responses, or Baton's private inventory.
+
+Tooling resolves Baton through an explicit development setting,
+`DORIA_BATON_PATH`, a sibling installed toolchain component, then `baton` on
+`PATH`. This does not imply or search for a mutable sibling repository checkout.

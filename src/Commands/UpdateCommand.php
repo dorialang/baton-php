@@ -7,8 +7,8 @@ namespace Doria\Baton\Commands;
 use Doria\Baton\Dependency\DependencyOperations;
 use Doria\Baton\Diagnostics\BatonError;
 use Doria\Baton\Manifest\Manifest;
-use Doria\Baton\Manifest\ManifestLoader;
-use Doria\Baton\Project\ProjectLocator;
+use Doria\Baton\Manifest\WorkspaceManifest;
+use Doria\Baton\Workspace\ProjectEnvironmentFactory;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -25,14 +25,20 @@ final class UpdateCommand extends BatonCommand
 
     protected function handle(InputInterface $input, OutputInterface $output): int
     {
-        $root = (new ProjectLocator())->locate(getcwd() ?: '.');
-        $manifest = (new ManifestLoader())->load($root);
+        $environment = (new ProjectEnvironmentFactory())->create(getcwd() ?: '.');
+        $root = $environment->lockRoot;
+        $manifest = $environment->manifest;
         if ($manifest instanceof Manifest) {
             throw new BatonError('B0335', 'Dependency Package Requires Schema 2', 'Schema-1 projects do not have dependency or lockfile semantics.');
         }
         /** @var list<string> $packages */
         $packages = $input->getArgument('packages');
-        (new DependencyOperations())->update($root, $manifest, DependencyOptions::network($input), $packages);
+        $operations = new DependencyOperations();
+        if ($environment->workspace !== null) {
+            $operations->updateWorkspace($environment->workspace, DependencyOptions::network($input), $packages);
+        } elseif (!$manifest instanceof WorkspaceManifest) {
+            $operations->update($root, $manifest, DependencyOptions::network($input), $packages);
+        }
         $output->writeln('<info>Dependencies updated.</info>');
 
         return self::SUCCESS;

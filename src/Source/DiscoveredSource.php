@@ -15,6 +15,7 @@ final readonly class DiscoveredSource
         public string $origin,
         public ?string $generatedFor,
         public ?NamespaceMapping $mapping,
+        public ?string $producer = null,
     ) {
     }
 }

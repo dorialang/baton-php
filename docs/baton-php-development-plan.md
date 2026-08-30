@@ -1309,15 +1309,27 @@ reporting, deterministic JSON `Baton.lock`, dependency commands, the global
 content-addressed cache, offline resolution, multi-package compiler plans, and
 dependency-aware receipts are implemented.
 
-### Stage 33 Slice 3 - Next
+### Stage 33 Slice 3 - Complete
 
 Workspaces, development dependencies, graph commands, incremental inventory,
 `baton test`, explicit processor orchestration, generated-source writes, and
-Phase F closure remain pending.
+project inventory are implemented.
 
-Stage 33 is in progress, not complete. The mandatory Pre-Stage-45 Doria-native
-Baton transition remains scheduled after the observable product contract is
-frozen and parity-proven.
+Stage 33 and Phase F are complete.
+
+### Native Testing Foundation Slice 1 - Complete
+
+Compiler-authored schema 3 test inventory now unifies `#[Test]` methods and
+behavioral `describe`/`it`/`test` declarations. Baton discovers, filters, and
+dispatches those records without parsing Doria source.
+
+### Native Testing Foundation Slice 2 - Next
+
+Expectation execution and final test reporting land next. The broader Native
+Testing Foundation remains in progress, and Stage 34 single class inheritance
+waits for the foundation to complete. The mandatory Pre-Stage-45 Doria-native
+Baton transition remains scheduled and must parity-port this frozen observable
+contract before the unsuffixed release.
 
 ### Add
 
@@ -1370,11 +1382,10 @@ The resolver must leave room for:
 It must not assume every dependency is pure, target-independent Doria source.
 
 The current PHP bootstrap accepts exact schema 1 and strict schema 2 projects.
-It resolves normal path and Git dependency graphs, validates and writes
-`Baton.lock`, supports exact cached and offline installs, and emits
-multi-package compiler plans. Workspace, development-dependency, graph-command,
-test, processor, and generated-source-write behavior remains inert until Slice
-3.
+It resolves normal, development, and processor path/Git graphs; validates
+standalone lock schema 1 and workspace lock schema 2; orchestrates tests and
+one-pass processors; publishes generated source atomically; emits graph and
+project inventory; and preserves exact offline behavior.
 
 ### Stage 33 Acceptance Criterion
 

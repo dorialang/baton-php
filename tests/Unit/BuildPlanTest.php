@@ -68,7 +68,7 @@ final class BuildPlanTest extends TestCase
         self::assertSame('release', $document['compiler']['nativeProfile']);
         self::assertSame([], $document['packages'][0]['dependencies']);
         self::assertSame(
-            ['src/Domain/Post.doria', 'src/web.doria', 'tests/PostTest.doria'],
+            ['src/Domain/Post.doria', 'src/web.doria'],
             array_column($document['packages'][0]['sources'], 'path'),
         );
         self::assertSame($root, $document['packages'][0]['root']);

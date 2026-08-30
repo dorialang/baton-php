@@ -45,6 +45,10 @@ also verify their private runtime.
 | `baton remove <package>` | Remove a direct normal dependency and update the lock |
 | `baton update [package ...]` | Deliberately refresh all or selected dependency resolutions |
 | `baton fetch [package ...]` | Acquire exact locked content without editing project files |
+| `baton test [--filter <text>]` | Discover low-level and behavioral tests from compiler metadata and run each in a fresh process |
+| `baton tree [--development]` | Show the exact locked dependency tree |
+| `baton why <package> [--development]` | Explain every locked path to a package |
+| `baton project --json [--development] --offline` | Emit the local project inventory used by tooling |
 | `--binary <name>` | Select a declared binary for `check`, `build`, or `run` |
 | `--library` | Select the declared library for `check` or source-only `build` |
 | `baton doctor` | Report and verify the installed toolchain |
@@ -101,12 +105,11 @@ See [Project manifest](docs/project-manifest.md) for the field contract and path
 
 ## Package-system contract
 
-Stage 33 Slices 1 and 2 implement strict manifest schema 2, compile-time source
-discovery, explicit targets, path and Git dependency resolution, deterministic
-`Baton.lock`, a global exact-Git cache, offline operation, multi-package compiler
-plans, and lock-aware receipts. Schema 1 remains exactly compatible. Workspaces,
-development dependencies, tests, processors, `tree`, and `why` remain Stage 33
-Slice 3 work; Stage 33 is not yet complete.
+Stage 33 is complete in this bootstrap. Strict manifest schema 2 now covers
+compile-time source discovery, explicit targets, path and Git sources,
+workspaces, development dependencies, processors, tests, graph inspection, and
+deterministic project inventory. Standalone schema-1 manifests and locks retain
+their exact historical behavior; workspaces use lock schema 2.
 
 Stage 33 implements and exercises that complete product contract in this
 disposable bootstrap. It does not make PHP Baton's permanent implementation.
@@ -114,6 +117,14 @@ After the required Doria tooling foundations land, the mandatory Pre-Stage-45
 transition parity-ports the frozen behavior to the clean `dorialang/baton`
 repository. The unsuffixed `2026.03.1` release is blocked until production
 toolchains use the native Baton executable and carry no Baton PHP runtime.
+
+Native Testing Foundation Slices 1 and 2 are implemented. Core compiler-owned
+`expect` and `fail` assertions run through `baton test` without Baton parsing
+Doria source or assertion output. In Slice 2, an escaping `AssertionError` is a
+normal failed test: raw failed output is replayed, later tests continue, and the
+suite exits nonzero. Assertion-specific classification, hierarchical output,
+and collection/Error expectations remain Slice 3; the foundation is not yet
+complete and Stage 34 remains blocked on its completion.
 
 See [Phase F package and dependency model](docs/phase-f-package-and-dependency-model.md)
 for the complete target contract and its current-state boundary.
@@ -156,6 +167,11 @@ Read [Architecture](docs/architecture.md) for the component and ownership model.
 - [Lockfile](docs/lockfile.md)
 - [Dependency cache](docs/dependency-cache.md)
 - [Offline operation](docs/offline.md)
+- [Workspaces](docs/workspaces.md)
+- [Testing](docs/testing.md)
+- [Attribute processors](docs/processors.md)
+- [Project inventory](docs/project-inventory.md)
+- [Incremental inventory](docs/incremental-inventory.md)
 - [Phase F package and dependency model](docs/phase-f-package-and-dependency-model.md)
 - [Toolchain discovery and validation](docs/toolchain.md)
 - [Private Baton runtime](docs/runtime.md)

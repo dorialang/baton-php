@@ -167,7 +167,7 @@ TOML));
     {
         $constraint = $version === null ? '' : ', version = "' . $version . '"';
 
-        return '{ git = "' . $this->url($name) . '", branch = "main"' . $constraint . ' }';
+        return '{ source = "git", url = "' . $this->url($name) . '", branch = "main"' . $constraint . ' }';
     }
 
     private function url(string $name): string

@@ -11,6 +11,10 @@ use Doria\Baton\Commands\FetchCommand;
 use Doria\Baton\Commands\InstallCommand;
 use Doria\Baton\Commands\AddCommand;
 use Doria\Baton\Commands\RemoveCommand;
+use Doria\Baton\Commands\ProjectCommand;
+use Doria\Baton\Commands\TestCommand;
+use Doria\Baton\Commands\TreeCommand;
+use Doria\Baton\Commands\WhyCommand;
 use Doria\Baton\Commands\UpdateCommand;
 use Doria\Baton\Commands\NewCommand;
 use Doria\Baton\Commands\RunCommand;
@@ -52,6 +56,10 @@ final class Application
             new RemoveCommand(),
             new UpdateCommand(),
             new FetchCommand(),
+            new TreeCommand(),
+            new WhyCommand(),
+            new ProjectCommand(),
+            new TestCommand(),
         ]);
 
         $application->addCommands(self::stageGatedCommands());
@@ -74,28 +82,14 @@ final class Application
         );
 
         return [
-            // Deliberately deferred to the Stage 33 Baton MVP or later.
-            new StageGatedCommand('test', 'Run project tests', $stage33(
-                'test',
-                "Compiler-owned #[Test] metadata is available. Test discovery and\n"
-                    . "execution land in Stage 33 Slice 3."
-            )),
-            new StageGatedCommand('tree', 'Show the dependency tree', $stage33(
-                'tree',
-                "Dependency graph commands land in Stage 33 Slice 3."
-            )),
-            new StageGatedCommand('why', 'Explain why a dependency is present', $stage33(
-                'why',
-                "Dependency graph commands land in Stage 33 Slice 3."
-            )),
+            // Deliberately outside the completed Stage 33 product contract.
             new StageGatedCommand('publish', 'Publish the package', $stage33(
                 'publish',
-                "Publishing lands after the Stage 33 package-security model is\n"
-                    . "established."
+                "Publishing requires a later package-distribution and security decision."
             )),
             new StageGatedCommand('bench', 'Run project benchmarks', $stage33(
                 'bench',
-                "Benchmark running lands with the Stage 33 Baton MVP."
+                "Benchmark orchestration is reserved for a later stage."
             )),
         ];
     }

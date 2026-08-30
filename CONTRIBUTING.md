@@ -57,6 +57,11 @@ every repository guard with:
 for script in scripts/check_*.php; do php "$script"; done
 ```
 
+Workspace, test, processor, and tooling work must also preserve
+[Workspaces](docs/workspaces.md), [Testing](docs/testing.md),
+[Attribute processors](docs/processors.md), [Project inventory](docs/project-inventory.md),
+and [Incremental inventory](docs/incremental-inventory.md).
+
 ## Use a compiler during development
 
 Commands that invoke `doriac` accept an explicit compiler artifact:
@@ -97,6 +102,10 @@ distribution, but the unsuffixed `2026.03.1` release may not ship it.
 - Keep schema 1 exact. Schema 2 behavior must use the typed manifest model and
   shared source-discovery/build-plan services rather than command-local parsing.
 - Treat `Baton.toml` and `toolchain.json` as data, never executable configuration.
+- Treat a declared processor as explicit authorization to execute arbitrary
+  native code with the contributor's account authority. Baton does not sandbox processors.
+- Discover tests and processor applications only through compiler metadata;
+  Baton must never parse Doria declarations.
 - Treat `Baton.lock` as strict generated data. Never silently update it from
   check, build, run, or fetch.
 - Keep Git non-interactive and isolated from user configuration, hooks, filters,

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Doria\Baton\Build;
 
 use Doria\Baton\Dependency\ResolvedDependencyGraph;
+use Doria\Baton\Dependency\ResolvedWorkspaceGraph;
+use Doria\Baton\Dependency\ResolvedPackage;
 use Doria\Baton\Manifest\NamespaceMapping;
 use Doria\Baton\Manifest\Schema2Manifest;
 use Doria\Baton\Manifest\SelectedPackageTarget;
@@ -19,18 +21,25 @@ final class BuildPlanBuilder
         SelectedPackageTarget $selected,
         SourceInventory $inventory,
         string $nativeProfile,
-        ?ResolvedDependencyGraph $graph = null,
+        ResolvedDependencyGraph|ResolvedWorkspaceGraph|null $graph = null,
+        bool $development = false,
+        bool $aggregateWorkspace = false,
     ): BuildPlan {
         $identity = $manifest->package->compilerIdentity;
 
-        $activeScopes = ['main'];
+        $activeScopes = $development ? ['main', 'development'] : ['main'];
         foreach ($inventory->sources as $source) {
-            if ($source->scope === 'generated' && $source->generatedFor === 'main') {
+            if ($source->scope === 'generated'
+                && ($source->generatedFor === 'main' || $development && $source->generatedFor === 'development')
+            ) {
                 $activeScopes[] = 'generated';
                 break;
             }
         }
         $entry = $selected->entry();
+        $selectedEntryIdentity = $entry === null
+            ? null
+            : $identity . ':' . str_replace('\\', '/', $entry);
         $compilerIdentities = [];
         foreach ($graph === null ? [] : $graph->packages as $packageName => $package) {
             $compilerIdentities[$packageName] = $package->manifest->package->compilerIdentity;
@@ -40,15 +49,27 @@ final class BuildPlanBuilder
             $manifest,
             $inventory,
             $compilerIdentities,
-            true,
+            $development,
+            $selectedEntryIdentity,
         )];
-        foreach ($graph?->sortedPackages() ?? [] as $dependency) {
+        foreach ((new ActivePackageResolver())->resolve(
+            $manifest,
+            $graph,
+            $development,
+            $aggregateWorkspace,
+        ) as $dependency) {
+            if ($dependency->manifest->package->name === $manifest->package->name) {
+                continue;
+            }
             $packages[] = $this->package(
                 $dependency->source->root,
                 $dependency->manifest,
                 $dependency->inventory,
                 $compilerIdentities,
-                false,
+                $development
+                    && $graph instanceof ResolvedWorkspaceGraph
+                    && $dependency->source->kind === 'workspace',
+                $selectedEntryIdentity,
             );
         }
         /** @var list<array{identity: string, root: string, namespaceMappings: list<array<string, mixed>>, sources: list<array<string, mixed>>, dependencies: list<array<string, string>>}> $packages */
@@ -65,7 +86,7 @@ final class BuildPlanBuilder
                 'package' => $identity,
                 'name' => $selected->name(),
                 'kind' => $selected->kind(),
-                'entrySource' => $entry === null ? null : $identity . ':' . str_replace('\\', '/', $entry),
+                'entrySource' => $selectedEntryIdentity,
                 'activeScopes' => $activeScopes,
             ],
             'packages' => $packages,
@@ -87,8 +108,9 @@ final class BuildPlanBuilder
         SourceInventory $inventory,
         array $compilerIdentities,
         bool $includeDevelopment,
+        ?string $selectedEntryIdentity,
     ): array {
-        /** @var list<array{prefix: string, path: string, scope: string, generatedFor: null}> $mappings */
+        /** @var list<array{prefix: string, path: string, scope: string, generatedFor: string|null}> $mappings */
         $mappings = array_map(
             static fn (NamespaceMapping $mapping): array => [
                 'prefix' => $mapping->prefix,
@@ -98,6 +120,27 @@ final class BuildPlanBuilder
             ],
             $includeDevelopment ? $manifest->autoload->all() : $manifest->autoload->main,
         );
+        foreach ($inventory->sources as $source) {
+            if ($source->scope !== 'generated'
+                || $source->generatedFor === null
+                || $source->producer === null
+                || $source->generatedFor === 'development' && !$includeDevelopment
+            ) {
+                continue;
+            }
+            $surfaceMappings = $source->generatedFor === 'main'
+                ? $manifest->autoload->main
+                : $manifest->autoload->development;
+            foreach ($surfaceMappings as $mapping) {
+                $base = 'build/generated/' . $source->producer . '/' . $source->generatedFor . '/';
+                $mappings[] = [
+                    'prefix' => $mapping->prefix,
+                    'path' => $base . ltrim($mapping->path, '/'),
+                    'scope' => 'generated',
+                    'generatedFor' => $source->generatedFor,
+                ];
+            }
+        }
         usort($mappings, static fn (array $left, array $right): int => strcmp(
             $left['scope'] . "\0" . $left['prefix'] . "\0" . $left['path'],
             $right['scope'] . "\0" . $right['prefix'] . "\0" . $right['path'],
@@ -105,13 +148,21 @@ final class BuildPlanBuilder
         $identity = $manifest->package->compilerIdentity;
         /** @var list<array{identity: string, path: string, scope: string, origin: string, generatedFor: string|null}> $sources */
         $sources = array_map(
-            static fn (DiscoveredSource $source): array => [
-                'identity' => $identity . ':' . $source->relativePath,
-                'path' => $source->relativePath,
-                'scope' => $source->scope,
-                'origin' => $source->origin,
-                'generatedFor' => $source->generatedFor,
-            ],
+            static function (DiscoveredSource $source) use ($identity, $selectedEntryIdentity): array {
+                $sourceIdentity = $identity . ':' . $source->relativePath;
+
+                return [
+                    'identity' => $sourceIdentity,
+                    'path' => $source->relativePath,
+                    'scope' => $source->scope,
+                    'origin' => BuildPlanSourceOrigin::resolve(
+                        $source,
+                        $sourceIdentity,
+                        $selectedEntryIdentity,
+                    ),
+                    'generatedFor' => $source->generatedFor,
+                ];
+            },
             array_values(array_filter(
                 $inventory->sources,
                 static fn (DiscoveredSource $source): bool => $includeDevelopment
@@ -124,15 +175,15 @@ final class BuildPlanBuilder
         ));
         /** @var list<array{package: string, kind: string}> $dependencies */
         $dependencies = array_map(
-            static fn (string $package): array => [
-                'package' => $compilerIdentities[$package] ?? $package,
-                'kind' => 'normal',
+            static fn (\Doria\Baton\Manifest\DependencyDeclaration $dependency): array => [
+                'package' => $compilerIdentities[$dependency->package] ?? $dependency->package,
+                'kind' => $dependency->kind->value,
             ],
-            array_keys($manifest->dependencies),
+            array_values($manifest->declaredDependencies($includeDevelopment, false)),
         );
         usort($dependencies, static fn (array $left, array $right): int => strcmp(
-            $left['package'],
-            $right['package'],
+            $left['package'] . "\0" . $left['kind'],
+            $right['package'] . "\0" . $right['kind'],
         ));
 
         return [
@@ -143,4 +194,5 @@ final class BuildPlanBuilder
             'dependencies' => $dependencies,
         ];
     }
+
 }
