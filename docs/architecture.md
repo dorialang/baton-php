@@ -161,7 +161,9 @@ The unsuffixed `2026.03.1` toolchain may not ship before this gate passes.
 The accepted target architecture is detailed in [Phase F package and dependency
 model](phase-f-package-and-dependency-model.md). Stage 33 and Phase F are
 complete in this bootstrap while exact schema-1 behavior remains intact. Native
-Testing Foundation Slice 1 is complete, Slice 2 is next, and the broader
-foundation remains in progress. Stage 34 single class inheritance waits for the
-foundation to complete. The mandatory Pre-Stage-45 native Baton transition
-remains scheduled and blocks the unsuffixed release.
+Testing Foundation Slices 1 and 2 are complete, Slice 3 is next, and the broader
+foundation remains in progress. Baton keeps assertions behind the same generic
+isolated-process boundary and neither parses assertion stderr nor classifies the
+compiler's structured assertion outcome. Stage 34 single class inheritance
+waits for the foundation to complete. The mandatory Pre-Stage-45 native Baton
+transition remains scheduled and blocks the unsuffixed release.

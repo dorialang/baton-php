@@ -27,6 +27,10 @@ Slice 3 completes workspaces, development dependencies, metadata-driven tests,
 processors, generated sources, graph commands, and project inventory.
 The post-Stage-33 native testing foundation keeps that project contract intact
 while schema 3 unifies low-level and behavioral compiler test records for Baton.
+Slices 1 and 2 are implemented: core expectations are compiler-owned and Baton
+continues to treat escaping assertions as generic failed isolated processes.
+Slice 3 remains next for assertion-specific classification and hierarchical
+presentation; the foundation remains incomplete and Stage 34 remains blocked.
 
 ## Schema 2
 

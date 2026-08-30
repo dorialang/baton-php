@@ -118,6 +118,14 @@ transition parity-ports the frozen behavior to the clean `dorialang/baton`
 repository. The unsuffixed `2026.03.1` release is blocked until production
 toolchains use the native Baton executable and carry no Baton PHP runtime.
 
+Native Testing Foundation Slices 1 and 2 are implemented. Core compiler-owned
+`expect` and `fail` assertions run through `baton test` without Baton parsing
+Doria source or assertion output. In Slice 2, an escaping `AssertionError` is a
+normal failed test: raw failed output is replayed, later tests continue, and the
+suite exits nonzero. Assertion-specific classification, hierarchical output,
+and collection/Error expectations remain Slice 3; the foundation is not yet
+complete and Stage 34 remains blocked on its completion.
+
 See [Phase F package and dependency model](docs/phase-f-package-and-dependency-model.md)
 for the complete target contract and its current-state boundary.
 

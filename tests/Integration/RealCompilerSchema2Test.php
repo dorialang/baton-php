@@ -362,7 +362,7 @@ name = "behavioral"
 TOML);
         $this->write($root, 'src/Library.doria', "class Library {}\n");
         $this->write($root, 'tests/Behavior.doria', <<<'DORIA'
-use Doria\Std\Test\{describe, it, test};
+use Doria\Std\Test\{describe, it, test, expect, fail};
 
 internal class ExpectedFailure implements Error
 {
@@ -372,12 +372,36 @@ internal class ExpectedFailure implements Error
 #[Test]
 function lowLevel(): void
 {
+    expect(42)->toEqual(42);
     echo "low level output\n";
+}
+
+#[Test]
+function lowLevelExpectationFailure(): void
+{
+    echo "before low-level assertion\n";
+    expect(41)->toEqual(42);
+}
+
+function assertHelper(): void
+{
+    expect("helper")->toStartWith("help");
 }
 
 describe("Shopping cart", function (): void {
     it("passes", function (): void {
+        assertHelper();
+        expect(true)->toBeTrue();
         echo "behavioral output\n";
+    });
+
+    it("expectation fails", function (): void {
+        echo "before behavioral assertion\n";
+        expect("cart")->toContain("missing");
+    });
+
+    it("fails explicitly", function (): void {
+        fail("explicit assertion failure");
     });
 
     test("returns a checked Error", function (): void {
@@ -399,7 +423,19 @@ DORIA);
         $suite = $this->runBaton(['test', '--compiler', $compiler], $root);
         self::assertSame(1, $suite['exitCode']);
         self::assertStringContainsString('PASS acme/behavioral lowLevel', $suite['stdout']);
+        self::assertStringContainsString(
+            'FAIL acme/behavioral lowLevelExpectationFailure',
+            $suite['stdout'],
+        );
         self::assertStringContainsString('PASS acme/behavioral Shopping cart > passes', $suite['stdout']);
+        self::assertStringContainsString(
+            'FAIL acme/behavioral Shopping cart > expectation fails',
+            $suite['stdout'],
+        );
+        self::assertStringContainsString(
+            'FAIL acme/behavioral Shopping cart > fails explicitly',
+            $suite['stdout'],
+        );
         self::assertStringContainsString(
             'FAIL acme/behavioral Shopping cart > returns a checked Error',
             $suite['stdout'],
@@ -414,9 +450,13 @@ DORIA);
         );
         self::assertStringContainsString('expected checked failure', $suite['stdout']);
         self::assertStringContainsString('expected panic failure', $suite['stdout']);
+        self::assertStringContainsString('before low-level assertion', $suite['stdout']);
+        self::assertStringContainsString('before behavioral assertion', $suite['stdout']);
+        self::assertStringContainsString('explicit assertion failure', $suite['stdout']);
+        self::assertStringContainsString('Error[R1001]: Assertion Failed', $suite['stdout']);
         self::assertStringNotContainsString('behavioral output', $suite['stdout']);
         self::assertStringNotContainsString('later output', $suite['stdout']);
-        self::assertStringContainsString('Tests: 5 selected, 3 passed, 2 failed', $suite['stdout']);
+        self::assertStringContainsString('Tests: 8 selected, 3 passed, 5 failed', $suite['stdout']);
 
         $filtered = $this->runBaton(
             ['test', '--filter', 'Shopping cart > passes', '--show-output', '--compiler', $compiler],
@@ -425,6 +465,13 @@ DORIA);
         self::assertSame(0, $filtered['exitCode'], $filtered['stderr']);
         self::assertStringContainsString('behavioral output', $filtered['stdout']);
         self::assertStringContainsString('Tests: 1 selected, 1 passed, 0 failed', $filtered['stdout']);
+
+        $release = $this->runBaton(
+            ['test', '--release', '--filter', 'Shopping cart > passes', '--compiler', $compiler],
+            $root,
+        );
+        self::assertSame(0, $release['exitCode'], $release['stderr'] . $release['stdout']);
+        self::assertStringContainsString('PASS acme/behavioral Shopping cart > passes', $release['stdout']);
 
         $this->runBaton(['test', '--compiler', $compiler], $root);
 
@@ -441,7 +488,7 @@ DORIA);
             $inventory['tests'],
             static fn (mixed $test): bool => is_array($test) && ($test['origin'] ?? null) === 'behavioral',
         ));
-        self::assertCount(4, $behavioral);
+        self::assertCount(6, $behavioral);
         $passing = array_values(array_filter(
             $behavioral,
             static fn (array $test): bool => ($test['displayName'] ?? null) === 'Shopping cart > passes',
@@ -458,7 +505,7 @@ DORIA);
         self::assertIsArray($metadata);
         self::assertSame(3, $metadata['schemaVersion']);
         self::assertIsArray($metadata['tests'] ?? null);
-        self::assertCount(5, $metadata['tests']);
+        self::assertCount(8, $metadata['tests']);
 
         $dispatcher = (string) file_get_contents($testDirectories[0] . '/dispatcher.doria');
         self::assertIsString($passing[0]['identity'] ?? null);
@@ -466,6 +513,7 @@ DORIA);
         self::assertStringContainsString($passing[0]['identity'], $dispatcher);
         self::assertStringContainsString($passing[0]['callableCanonicalName'] . '();', $dispatcher);
         self::assertStringContainsString(' throws ExpectedFailure', $dispatcher);
+        self::assertStringNotContainsString('throws AssertionError', $dispatcher);
         self::assertStringNotContainsString('ConsoleIO', $dispatcher);
         self::assertStringNotContainsString('describe(', $dispatcher);
         self::assertStringNotContainsString('it(', $dispatcher);
@@ -519,6 +567,76 @@ DORIA);
         $plan = (string) file_get_contents($plans[0]);
         self::assertStringContainsString('dispatcher.doria', $plan);
         self::assertStringNotContainsString('src/main.doria', $plan);
+    }
+
+    public function testWorkspaceAssertionsUsePackageInternalsAndDirectDevelopmentDependencies(): void
+    {
+        $compiler = $this->compiler();
+        $root = $this->temporaryDirectory('real compiler assertion workspace');
+        self::assertTrue(mkdir($root . '/packages/application/src', 0o755, true));
+        self::assertTrue(mkdir($root . '/packages/application/tests', 0o755, true));
+        self::assertTrue(mkdir($root . '/packages/test-support/src', 0o755, true));
+        $this->write($root, 'Baton.toml', <<<'TOML'
+manifest-version = 2
+[workspace]
+members = ["packages/*"]
+TOML);
+        $this->write($root, 'packages/application/Baton.toml', <<<'TOML'
+manifest-version = 2
+[package]
+name = "acme/application"
+version = "1.0.0"
+edition = "2026"
+[targets.library]
+name = "application"
+[autoload.namespaces]
+"" = "src/"
+[autoload-dev.namespaces]
+"" = "tests/"
+[dev-dependencies]
+"acme/test-support" = { source = "path", path = "../test-support" }
+TOML);
+        $this->write($root, 'packages/test-support/Baton.toml', <<<'TOML'
+manifest-version = 2
+[package]
+name = "acme/test-support"
+version = "1.0.0"
+edition = "2026"
+[targets.library]
+name = "test-support"
+[autoload.namespaces]
+"" = "src/"
+TOML);
+        $this->write(
+            $root,
+            'packages/application/src/Library.doria',
+            "internal function packageAnswer(): int { return 42; }\n",
+        );
+        $this->write(
+            $root,
+            'packages/test-support/src/Support.doria',
+            "function dependencyAnswer(): int { return 42; }\n",
+        );
+        $this->write($root, 'packages/application/tests/Assertions.doria', <<<'DORIA'
+use Doria\Std\Test\expect;
+
+#[Test]
+function workspaceAssertion(): void
+{
+    expect(packageAnswer())->toEqual(dependencyAnswer());
+}
+DORIA);
+
+        $install = $this->runBaton(['install', '--offline'], $root);
+        self::assertSame(0, $install['exitCode'], $install['stderr']);
+        $suite = $this->runBaton(
+            ['test', '--workspace', '--offline', '--compiler', $compiler],
+            $root,
+        );
+        self::assertSame(0, $suite['exitCode'], $suite['stderr'] . $suite['stdout']);
+        self::assertStringContainsString('PASS acme/application workspaceAssertion', $suite['stdout']);
+        self::assertStringContainsString('acme/test-support: 0 tests', $suite['stdout']);
+        self::assertStringContainsString('Tests: 1 selected, 1 passed, 0 failed', $suite['stdout']);
     }
 
     public function testAggregateToolingPlanNormalizesNonSelectedBinaryEntries(): void

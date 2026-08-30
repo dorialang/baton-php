@@ -26,6 +26,12 @@ shared generated-source registry proves their compiler revision, owner,
 processor, path, identity, and content hash. Missing or stale required output is
 a diagnostic directing the user to an online check or build.
 
+Native Testing Slice 2 does not change project or metadata inventory schemas.
+Compiler-owned expectation chains remain source semantics; Baton records the
+same schema-3 test identity and callable facts and never stores matcher plans or
+parses assertion output. Slice 3 classification must remain outside this
+inventory protocol.
+
 Language tooling consumes this protocol rather than parsing `Baton.toml`,
 `Baton.lock`, private inventory, or processor responses. Aggregate workspace
 plans retain package boundaries and direct edge categories; they do not invent

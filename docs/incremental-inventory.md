@@ -17,6 +17,12 @@ origin, authored spelling, compiler callable identity and canonical name, source
 and byte start. Display and dispatch identities remain separate; the inventory is
 never used to rediscover a test from Doria source.
 
+Core Slice-2 assertions add no inventory fields. Assertion effects and matcher
+plans remain compiler-internal, while an escaping assertion is handled through
+the existing process exit and raw-output boundary. Metadata schema 3 and test
+inventory schema 1 remain exact; Slice 3 classification must not become private
+inventory authority.
+
 Correctness never depends on timestamps alone. Content hashes invalidate reuse
 after manifest, lock, member, source, dependency, processor, generated output,
 compiler, target, profile, or selection changes, including same-size source

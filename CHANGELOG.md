@@ -44,6 +44,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Dor
   and one fresh process per selected test.
 - Strict metadata-schema-3 discovery unifying low-level `#[Test]` functions and
   nested behavioral tests, with stable identity dispatch and display-name filtering.
+- Native Testing Slice 2 compiler-owned core `expect` and `fail` assertions through the existing
+  isolated test-process boundary, including generic failure reporting, raw
+  failed-output replay, and continuation to later tests without source or
+  assertion-outcome parsing in Baton.
 - `baton tree`, `baton why`, and deterministic `baton project --json` tooling inventory.
 - Private content-hashed project, processor, generated-source, and test inventory.
 
@@ -61,3 +65,5 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Dor
 - Nested/composable workspaces, package registries, verified archives,
   publishing, processor sandboxing, recursive processors, and parallel tests.
 - The mandatory Pre-Stage-45 parity port from this PHP bootstrap to native Baton.
+- Native Testing Slice 3 assertion classification, hierarchical presentation,
+  collection/Error expectations, and bounded difference rendering.

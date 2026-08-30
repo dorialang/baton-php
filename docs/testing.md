@@ -31,8 +31,15 @@ successful tests too. Development sources, direct development dependencies,
 and valid generated development sources are active only in the tested package's
 test graph; dependency-owned development dependencies do not become visible.
 
-Behavioral declaration and callable semantics remain compiler-owned. The native
-testing foundation is still in progress: fluent `expect`/`fail` assertions and
-final assertion-aware hierarchy reporting arrive in later foundation slices.
-Until then, checked Errors and panics use the existing generic failed-test
-reporting while preserving process isolation.
+Behavioral declarations, fluent `expect`/`fail` assertions, matcher semantics,
+and assertion effects remain compiler-owned. Baton does not parse Doria source
+or assertion stderr. An escaping `AssertionError` is reported as the same
+generic `FAIL` as any other nonzero test process, with failed stdout/stderr
+replayed and later tests still executed. The generated dispatcher declares only
+authored required Errors; the compiler propagates its internal assertion effect
+without `throws AssertionError`, and metadata schema 3 remains unchanged.
+
+Native Testing Foundation Slices 1 and 2 are implemented, but the foundation is
+not complete. Slice 3 remains next and owns assertion-specific classification,
+hierarchical presentation, collection/Error expectations, and bounded
+differences. Stage 34 remains blocked until the foundation completes.
