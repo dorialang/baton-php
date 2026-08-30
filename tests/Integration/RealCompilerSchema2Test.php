@@ -341,6 +341,136 @@ DORIA);
         self::assertArrayHasKey('acme/tested', $recordedTests);
     }
 
+    public function testBehavioralMetadataDrivesIdentityDispatchEffectsReportingAndIsolation(): void
+    {
+        $compiler = $this->compiler();
+        $root = $this->temporaryDirectory('real compiler behavioral tests');
+        self::assertTrue(mkdir($root . '/src', 0o755, true));
+        self::assertTrue(mkdir($root . '/tests', 0o755, true));
+        $this->write($root, 'Baton.toml', <<<'TOML'
+manifest-version = 2
+[package]
+name = "acme/behavioral"
+version = "1.0.0"
+edition = "2026"
+[targets.library]
+name = "behavioral"
+[autoload.namespaces]
+"" = "src/"
+[autoload-dev.namespaces]
+"" = "tests/"
+TOML);
+        $this->write($root, 'src/Library.doria', "class Library {}\n");
+        $this->write($root, 'tests/Behavior.doria', <<<'DORIA'
+use Doria\Std\Test\{describe, it, test};
+
+internal class ExpectedFailure implements Error
+{
+    function __construct(string $message) {}
+}
+
+#[Test]
+function lowLevel(): void
+{
+    echo "low level output\n";
+}
+
+describe("Shopping cart", function (): void {
+    it("passes", function (): void {
+        echo "behavioral output\n";
+    });
+
+    test("returns a checked Error", function (): void {
+        throw new ExpectedFailure("expected checked failure");
+    });
+
+    describe("failure isolation", function (): void {
+        it("panics", function (): void {
+            panic("expected panic failure");
+        });
+
+        it("continues later tests", function (): void {
+            echo "later output\n";
+        });
+    });
+});
+DORIA);
+
+        $suite = $this->runBaton(['test', '--compiler', $compiler], $root);
+        self::assertSame(1, $suite['exitCode']);
+        self::assertStringContainsString('PASS acme/behavioral lowLevel', $suite['stdout']);
+        self::assertStringContainsString('PASS acme/behavioral Shopping cart > passes', $suite['stdout']);
+        self::assertStringContainsString(
+            'FAIL acme/behavioral Shopping cart > returns a checked Error',
+            $suite['stdout'],
+        );
+        self::assertStringContainsString(
+            'FAIL acme/behavioral Shopping cart > failure isolation > panics',
+            $suite['stdout'],
+        );
+        self::assertStringContainsString(
+            'PASS acme/behavioral Shopping cart > failure isolation > continues later tests',
+            $suite['stdout'],
+        );
+        self::assertStringContainsString('expected checked failure', $suite['stdout']);
+        self::assertStringContainsString('expected panic failure', $suite['stdout']);
+        self::assertStringNotContainsString('behavioral output', $suite['stdout']);
+        self::assertStringNotContainsString('later output', $suite['stdout']);
+        self::assertStringContainsString('Tests: 5 selected, 3 passed, 2 failed', $suite['stdout']);
+
+        $filtered = $this->runBaton(
+            ['test', '--filter', 'Shopping cart > passes', '--show-output', '--compiler', $compiler],
+            $root,
+        );
+        self::assertSame(0, $filtered['exitCode'], $filtered['stderr']);
+        self::assertStringContainsString('behavioral output', $filtered['stdout']);
+        self::assertStringContainsString('Tests: 1 selected, 1 passed, 0 failed', $filtered['stdout']);
+
+        $this->runBaton(['test', '--compiler', $compiler], $root);
+
+        $testDirectories = glob($root . '/build/*/development/acme/behavioral/tests') ?: [];
+        self::assertCount(1, $testDirectories);
+        $inventory = json_decode(
+            (string) file_get_contents($testDirectories[0] . '/inventory.json'),
+            true,
+            flags: JSON_THROW_ON_ERROR,
+        );
+        self::assertIsArray($inventory);
+        self::assertIsArray($inventory['tests'] ?? null);
+        $behavioral = array_values(array_filter(
+            $inventory['tests'],
+            static fn (mixed $test): bool => is_array($test) && ($test['origin'] ?? null) === 'behavioral',
+        ));
+        self::assertCount(4, $behavioral);
+        $passing = array_values(array_filter(
+            $behavioral,
+            static fn (array $test): bool => ($test['displayName'] ?? null) === 'Shopping cart > passes',
+        ));
+        self::assertCount(1, $passing);
+        self::assertSame(['Shopping cart', 'passes'], $passing[0]['pathSegments']);
+        self::assertNotSame($passing[0]['displayName'], $passing[0]['callableCanonicalName']);
+
+        $metadata = json_decode(
+            (string) file_get_contents($testDirectories[0] . '/metadata.json'),
+            true,
+            flags: JSON_THROW_ON_ERROR,
+        );
+        self::assertIsArray($metadata);
+        self::assertSame(3, $metadata['schemaVersion']);
+        self::assertIsArray($metadata['tests'] ?? null);
+        self::assertCount(5, $metadata['tests']);
+
+        $dispatcher = (string) file_get_contents($testDirectories[0] . '/dispatcher.doria');
+        self::assertIsString($passing[0]['identity'] ?? null);
+        self::assertIsString($passing[0]['callableCanonicalName'] ?? null);
+        self::assertStringContainsString($passing[0]['identity'], $dispatcher);
+        self::assertStringContainsString($passing[0]['callableCanonicalName'] . '();', $dispatcher);
+        self::assertStringContainsString(' throws ExpectedFailure', $dispatcher);
+        self::assertStringNotContainsString('ConsoleIO', $dispatcher);
+        self::assertStringNotContainsString('describe(', $dispatcher);
+        self::assertStringNotContainsString('it(', $dispatcher);
+    }
+
     public function testBinaryOnlyPackageTestsUseTheBinaryForDiscoveryButNotTheDispatcherGraph(): void
     {
         $compiler = $this->compiler();

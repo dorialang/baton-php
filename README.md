@@ -45,7 +45,7 @@ also verify their private runtime.
 | `baton remove <package>` | Remove a direct normal dependency and update the lock |
 | `baton update [package ...]` | Deliberately refresh all or selected dependency resolutions |
 | `baton fetch [package ...]` | Acquire exact locked content without editing project files |
-| `baton test [--filter <text>]` | Discover compiler-known tests and run each in a fresh process |
+| `baton test [--filter <text>]` | Discover low-level and behavioral tests from compiler metadata and run each in a fresh process |
 | `baton tree [--development]` | Show the exact locked dependency tree |
 | `baton why <package> [--development]` | Explain every locked path to a package |
 | `baton project --json [--development] --offline` | Emit the local project inventory used by tooling |

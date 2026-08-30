@@ -59,7 +59,7 @@ final class TestPackageRunner
         );
         $compiler = new CompilerAdapter($toolchain->compilerPath);
         $metadataResult = $compiler->capture(
-            ['metadata', '--schema-version', '2', '--build-plan', $context->buildPlan->path],
+            ['metadata', '--schema-version', '3', '--build-plan', $context->buildPlan->path],
             $projectRoot,
         );
         if (!$metadataResult->succeeded()) {
@@ -69,7 +69,7 @@ final class TestPackageRunner
                 trim($metadataResult->stderr) ?: 'doriac metadata failed while discovering tests.',
             );
         }
-        $metadata = (new MetadataReader())->schema2($metadataResult->stdout);
+        $metadata = (new MetadataReader())->schema3($metadataResult->stdout);
         $tests = (new TestDiscovery())->discover(
             $metadata,
             $manifest->package->compilerIdentity,
@@ -107,12 +107,7 @@ final class TestPackageRunner
         $testInventory = $this->json([
             'schemaVersion' => 1,
             'package' => $manifest->package->name,
-            'tests' => array_map(static fn (ExecutableTest $test): array => [
-                'identity' => $test->identity,
-                'canonicalName' => $test->canonicalName,
-                'source' => $test->source,
-                'byteStart' => $test->location->byteStart,
-            ], $tests),
+            'tests' => array_map($this->testFact(...), $tests),
             'metadataSha256' => hash('sha256', $metadataResult->stdout),
             'dispatcherSha256' => hash('sha256', $dispatcher),
             'buildPlanSha256' => $written->sha256,
@@ -146,25 +141,20 @@ final class TestPackageRunner
             $written->sha256,
             hash('sha256', $dispatcher),
             $artifactHash,
-            array_map(static fn (ExecutableTest $test): array => [
-                'identity' => $test->identity,
-                'canonicalName' => $test->canonicalName,
-                'source' => $test->source,
-                'byteStart' => $test->location->byteStart,
-            ], $tests),
+            array_map($this->testFact(...), $tests),
         );
 
         $passed = 0;
         $failed = 0;
         foreach ($tests as $test) {
-            $result = $this->execute($artifact, $test->canonicalName, $projectRoot);
+            $result = $this->execute($artifact, $test->identity, $projectRoot);
             $success = $result['exitCode'] === 0;
             if ($success) {
                 ++$passed;
-                $output->writeln("PASS {$manifest->package->name} {$test->canonicalName}");
+                $output->writeln("PASS {$manifest->package->name} {$test->displayName}");
             } else {
                 ++$failed;
-                $output->writeln("FAIL {$manifest->package->name} {$test->canonicalName}");
+                $output->writeln("FAIL {$manifest->package->name} {$test->displayName}");
             }
             if ($showOutput || !$success) {
                 $this->renderOutput($output, $test, $result);
@@ -208,9 +198,9 @@ final class TestPackageRunner
         $throws = $effectNames === [] ? '' : ' throws ' . implode(', ', $effectNames);
         $source = "function main(List<string> \$args): void{$throws}\n{\n";
         foreach ($tests as $test) {
-            $name = $this->string($test->canonicalName);
+            $name = $this->string($test->identity);
             $source .= "    if (\$args[0] == \"{$name}\") {\n";
-            $source .= "        {$test->canonicalName}();\n";
+            $source .= "        {$test->callableCanonicalName}();\n";
             $source .= "        return;\n";
             $source .= "    }\n";
         }
@@ -448,14 +438,14 @@ final class TestPackageRunner
      */
     private function renderOutput(OutputInterface $output, ExecutableTest $test, array $result): void
     {
-        $output->writeln("--- {$test->canonicalName} stdout ---");
+        $output->writeln("--- {$test->displayName} stdout ---");
         if ($result['stdout'] !== '') {
             $output->write($result['stdout']);
             if (!str_ends_with($result['stdout'], "\n")) {
                 $output->writeln('');
             }
         }
-        $output->writeln("--- {$test->canonicalName} stderr ---");
+        $output->writeln("--- {$test->displayName} stderr ---");
         if ($result['stderr'] !== '') {
             $output->write($result['stderr']);
             if (!str_ends_with($result['stderr'], "\n")) {
@@ -463,6 +453,22 @@ final class TestPackageRunner
             }
         }
         $output->writeln("--- exit {$result['exitCode']} ---");
+    }
+
+    /** @return array<string, mixed> */
+    private function testFact(ExecutableTest $test): array
+    {
+        return [
+            'identity' => $test->identity,
+            'displayName' => $test->displayName,
+            'pathSegments' => $test->pathSegments,
+            'origin' => $test->origin,
+            'authoredSpelling' => $test->authoredSpelling,
+            'callableIdentity' => $test->callableIdentity,
+            'callableCanonicalName' => $test->callableCanonicalName,
+            'source' => $test->source,
+            'byteStart' => $test->location->byteStart,
+        ];
     }
 
     private function relative(string $root, string $path): string

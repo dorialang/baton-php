@@ -32,8 +32,8 @@ $require('src/Workspace/WorkspaceDiscovery.php', [
 $require('src/Dependency/WorkspaceLockFileStore.php', ["schemaVersion'] ?? null) !== 2", 'AtomicFileWriter']);
 $require('src/Build/AtomicFileWriter.php', ['file_put_contents(', 'LOCK_EX', 'rename(', '.tmp']);
 $require('src/Dependency/LockFileStore.php', ["schemaVersion'] ?? null) !== 1"]);
-$require('src/Testing/TestPackageRunner.php', ["['metadata', '--schema-version', '2'", 'BoundedProcessRunner', 'dispatcher']);
-$require('src/Testing/TestDiscovery.php', ['compiler-known:Test', "\$callable->kind !== 'function'", "\$callable->returnType !== 'void'"]);
+$require('src/Testing/TestPackageRunner.php', ["['metadata', '--schema-version', '3'", 'BoundedProcessRunner', 'dispatcher']);
+$require('src/Testing/TestDiscovery.php', ['MetadataDocumentV3', '$metadata->tests', '$test->displayName']);
 $require('src/Processor/ProcessorPipeline.php', [
     'private const PROTOCOL = 1',
     "['metadata', '--schema-version', '2'",

@@ -1,9 +1,10 @@
 # Testing
 
-`baton test` discovers executable tests from `doriac metadata --schema-version
-2`; Baton never parses Doria source. An executable test is a compiler-known
-`#[Test]` application on a zero-parameter, non-generic top-level function whose
-return type is exactly `void`. Package-internal test functions are valid.
+`baton test` discovers the compiler's unified test records from `doriac metadata
+--schema-version 3`; Baton never parses Doria source. The table contains both
+compiler-known `#[Test]` functions and behavioral `describe`/`it`/`test`
+declarations. Package-internal test functions and compiler-generated behavioral
+test bodies are directly callable within the tested package.
 
 ```console
 baton test
@@ -12,12 +13,14 @@ baton test --show-output
 baton test --workspace
 ```
 
-Filtering is a case-sensitive substring match over canonical function names.
-With no filter, zero tests succeeds. An explicit filter matching no tests is a
-diagnostic.
+Filtering is a case-sensitive substring match over compiler-provided display
+names, including nested suite paths. With no filter, zero tests succeeds. An
+explicit filter matching no tests is a diagnostic.
 
 Baton generates one deterministic development entry dispatcher and compiles it
-once per package and profile. Each selected test then runs in a fresh operating
+once per package and profile. Dispatcher branches use stable compiler test
+identities and call exact compiler-provided callable names; Baton never invents
+or reflects over test symbols. Each selected test then runs in a fresh operating
 system process. A panic, escaping checked Error, signal, or abnormal status
 fails that test without preventing later tests from running. Tests are not
 parallelized, retried, sandboxed, or loaded into Baton itself.

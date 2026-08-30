@@ -81,7 +81,7 @@ final class TestCommand extends BatonCommand
             throw new BatonError(
                 'B0422',
                 'No Tests Match Filter',
-                "No #[Test] function contains the case-sensitive substring `{$filter}`.",
+                "No test display name contains the case-sensitive substring `{$filter}`.",
             );
         }
         $output->writeln("Tests: {$selected} selected, {$passed} passed, {$failed} failed");

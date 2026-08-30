@@ -65,7 +65,7 @@ Commands such as `doctor` that do not require a project skip project discovery. 
 | `Build` | Select managed paths and write compiler plans and receipts atomically |
 | `Workspace` | Discover members, select packages, and preserve workspace lock authority |
 | `Processor` | Filter compiler metadata, execute exact processors, and publish generated source |
-| `Testing` | Validate metadata callables, compile one dispatcher, and isolate test processes |
+| `Testing` | Validate unified schema-3 test records, compile one direct-call dispatcher, and isolate test processes |
 | `Inventory` | Maintain disposable content-hashed project state |
 | `Toolchain` | Discover components and verify identity, target, and hashes |
 | `Compiler` | Start `doriac` safely and preserve process behavior |

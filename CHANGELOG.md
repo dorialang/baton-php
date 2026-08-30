@@ -42,6 +42,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Dor
   and Git source model as normal dependencies.
 - Compiler-metadata-driven `baton test`, one dispatcher compilation per package,
   and one fresh process per selected test.
+- Strict metadata-schema-3 discovery unifying low-level `#[Test]` functions and
+  nested behavioral tests, with stable identity dispatch and display-name filtering.
 - `baton tree`, `baton why`, and deterministic `baton project --json` tooling inventory.
 - Private content-hashed project, processor, generated-source, and test inventory.
 
