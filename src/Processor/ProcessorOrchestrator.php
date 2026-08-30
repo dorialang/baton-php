@@ -87,11 +87,10 @@ final class ProcessorOrchestrator
                     new SelectedPackageTarget($target),
                     $run->sources,
                 );
-            $packages[$package->manifest->package->name] = new ResolvedPackage(
-                $package->manifest,
-                $package->source,
-                $package->manifestFingerprint,
+            $packages[$package->manifest->package->name] = $package->withInventory(
+                new SelectedPackageTarget($target),
                 $packageInventory,
+                true,
             );
             $sources = [...$sources, ...$run->sources];
             $facts = [...$facts, ...$run->facts];
@@ -99,11 +98,10 @@ final class ProcessorOrchestrator
 
         if (isset($packages[$manifest->package->name])) {
             $rootPackage = $packages[$manifest->package->name];
-            $packages[$manifest->package->name] = new ResolvedPackage(
-                $rootPackage->manifest,
-                $rootPackage->source,
-                $rootPackage->manifestFingerprint,
+            $packages[$manifest->package->name] = $rootPackage->withInventory(
+                $selected,
                 $rootInventory,
+                true,
             );
         }
         usort($facts, static fn (array $left, array $right): int => strcmp(

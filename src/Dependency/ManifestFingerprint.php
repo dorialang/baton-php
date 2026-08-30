@@ -42,32 +42,15 @@ final class ManifestFingerprint
             $right['scope'] . "\0" . $right['prefix'] . "\0" . $right['path'],
         ));
 
-        $dependencies = array_map(
-            static function (DependencyDeclaration $dependency): array {
-                $source = $dependency->source;
-                $sourceData = $source instanceof PathDependencySource
-                    ? ['kind' => 'path', 'path' => str_replace('\\', '/', $source->path)]
-                    : [
-                        'kind' => 'git',
-                        'url' => $source instanceof GitDependencySource ? $source->url : '',
-                        'selector' => $source instanceof GitDependencySource
-                            ? ['kind' => $source->selector->kind, 'value' => $source->selector->value]
-                            : null,
-                    ];
-
-                return [
-                    'package' => $dependency->package,
-                    'kind' => $dependency->kind->value,
-                    'source' => $sourceData,
-                    'version' => $dependency->version?->expression,
-                ];
-            },
-            array_values($manifest->declaredDependencies(true, true)),
-        );
-        usort($dependencies, static fn (array $left, array $right): int => strcmp(
-            $left['package'] . "\0" . $left['kind'],
-            $right['package'] . "\0" . $right['kind'],
+        $dependencyDeclarations = $manifest->declaredDependencyEdges(true, true);
+        usort($dependencyDeclarations, static fn (DependencyDeclaration $left, DependencyDeclaration $right): int => strcmp(
+            $left->package . "\0" . $left->kind->value,
+            $right->package . "\0" . $right->kind->value,
         ));
+        $dependencies = array_map(
+            fn (DependencyDeclaration $dependency): array => $this->dependency($dependency),
+            $dependencyDeclarations,
+        );
 
         $document = [
             'manifestVersion' => 2,
@@ -89,8 +72,8 @@ final class ManifestFingerprint
                 static fn (array $dependency): bool => $dependency['kind'] === 'development',
             )),
             'processors' => array_map(
-                static fn (\Doria\Baton\Manifest\ProcessorDeclaration $processor): array => [
-                    'package' => $processor->package(),
+                fn (\Doria\Baton\Manifest\ProcessorDeclaration $processor): array => [
+                    ...$this->dependency($processor->dependency),
                     'binary' => $processor->binary,
                     'attributes' => $processor->attributes,
                 ],
@@ -103,5 +86,27 @@ final class ManifestFingerprint
             $document,
             JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR,
         ));
+    }
+
+    /** @return array<string, mixed> */
+    private function dependency(DependencyDeclaration $dependency): array
+    {
+        $source = $dependency->source;
+        $sourceData = $source instanceof PathDependencySource
+            ? ['kind' => 'path', 'path' => str_replace('\\', '/', $source->path)]
+            : [
+                'kind' => 'git',
+                'url' => $source instanceof GitDependencySource ? $source->url : '',
+                'selector' => $source instanceof GitDependencySource
+                    ? ['kind' => $source->selector->kind, 'value' => $source->selector->value]
+                    : null,
+            ];
+
+        return [
+            'package' => $dependency->package,
+            'kind' => $dependency->kind->value,
+            'source' => $sourceData,
+            'version' => $dependency->version?->expression,
+        ];
     }
 }

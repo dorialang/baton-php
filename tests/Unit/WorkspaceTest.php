@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Doria\Baton\Tests\Unit;
 
 use Doria\Baton\Dependency\DependencyResolver;
+use Doria\Baton\Dependency\DependencyOperations;
 use Doria\Baton\Dependency\NetworkPolicy;
 use Doria\Baton\Dependency\WorkspaceLockFileFactory;
 use Doria\Baton\Dependency\WorkspaceLockFileStore;
@@ -103,6 +104,45 @@ TOML);
         $this->assertSamePath($project, $environment->commandRoot);
         $this->assertSamePath($project, $environment->lockRoot);
         self::assertNull($environment->workspace);
+    }
+
+    public function testSelectedWorkspaceFetchTraversesOnlyTheLockedSelectedClosure(): void
+    {
+        $root = $this->temporaryDirectory('selected workspace fetch');
+        $this->write($root . '/Baton.toml', "manifest-version = 2\n[workspace]\nmembers = [\"apps/*\"]\n");
+        $this->package($root . '/external/wanted', 'acme/wanted-dependency');
+        $this->package($root . '/external/unrelated', 'acme/unrelated-dependency');
+        $this->package(
+            $root . '/apps/wanted',
+            'acme/wanted',
+            '"acme/wanted-dependency" = { source = "path", path = "../../external/wanted" }',
+        );
+        $this->package(
+            $root . '/apps/unrelated',
+            'acme/unrelated',
+            '"acme/unrelated-dependency" = { source = "path", path = "../../external/unrelated" }',
+        );
+        $manifest = (new ManifestLoader())->load($root);
+        self::assertInstanceOf(WorkspaceManifest::class, $manifest);
+        $workspace = (new WorkspaceDiscovery())->discover($root, $manifest);
+        $graph = (new DependencyResolver())->resolveWorkspace($workspace, NetworkPolicy::Offline);
+        (new WorkspaceLockFileStore())->write($root, (new WorkspaceLockFileFactory())->fromGraph($graph));
+
+        self::assertTrue(unlink($root . '/external/unrelated/src/Library.doria'));
+        self::assertTrue(unlink($root . '/external/unrelated/Baton.toml'));
+        self::assertTrue(rmdir($root . '/external/unrelated/src'));
+        self::assertTrue(rmdir($root . '/external/unrelated'));
+
+        $selected = (new DependencyOperations())->fetchWorkspace(
+            $workspace,
+            NetworkPolicy::Offline,
+            ['acme/wanted-dependency'],
+        );
+        self::assertSame(['acme/wanted-dependency'], array_keys($selected->packages));
+
+        $this->expectException(BatonError::class);
+        $this->expectExceptionMessage('Path Dependency Could Not Be Read');
+        (new DependencyOperations())->fetchWorkspace($workspace, NetworkPolicy::Offline, []);
     }
 
     public function testMalformedDeclaredAncestorWorkspaceRemainsAuthoritative(): void

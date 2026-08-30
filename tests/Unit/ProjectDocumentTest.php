@@ -10,8 +10,11 @@ use Doria\Baton\Dependency\LockFileStore;
 use Doria\Baton\Dependency\NetworkPolicy;
 use Doria\Baton\Manifest\ManifestLoader;
 use Doria\Baton\Manifest\Schema2Manifest;
+use Doria\Baton\Manifest\TargetSelector;
 use Doria\Baton\Processor\GeneratedSourceRegistry;
+use Doria\Baton\Processor\ProcessorSourceIdentity;
 use Doria\Baton\Project\ProjectDocumentBuilder;
+use Doria\Baton\Source\SourceDiscovery;
 use Doria\Baton\Tests\TestCase;
 use Doria\Baton\Workspace\ProjectSelection;
 
@@ -105,14 +108,38 @@ TOML);
         $this->write($generated, "namespace Acme\\App;\nclass Generated {}\n");
         $hash = hash_file('sha256', $generated);
         self::assertIsString($hash);
-        (new GeneratedSourceRegistry())->replaceOwner($root, 'compiler-project-revision', 'acme/app', [[
+        $requestHash = hash('sha256', 'project-document-request');
+        $ownerInventory = (new SourceDiscovery($root))->discover(
+            $manifest,
+            (new TargetSelector())->select($manifest, null, true, 'check'),
+        );
+        $processor = $graph->packages['acme/generator'];
+        (new GeneratedSourceRegistry())->replaceOwner(
+            $root,
+            'compiler-project-revision',
+            $manifest,
+            $ownerInventory,
+            $graph->packages,
+            [[
             'identity' => 'acme/app:build/generated/acme/generator/main/Generated.doria',
             'package' => 'acme/app',
             'processor' => 'acme/generator',
             'path' => $generated,
             'generatedFor' => 'main',
+            'requestSha256' => $requestHash,
             'sha256' => $hash,
-        ]]);
+            ]],
+            [[
+                'processor' => 'acme/generator',
+                'sourceIdentitySha256' => hash(
+                    'sha256',
+                    (new ProcessorSourceIdentity())->calculate($processor, 'generator'),
+                ),
+                'binaryTarget' => 'generator',
+                'requestSha256' => $requestHash,
+                'graphFingerprint' => 'project-document-graph',
+            ]],
+        );
 
         $selection = new ProjectSelection($root, $root, $manifest, null, false);
         $builder = new ProjectDocumentBuilder();

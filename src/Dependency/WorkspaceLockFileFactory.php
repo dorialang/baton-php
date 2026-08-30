@@ -42,7 +42,7 @@ final class WorkspaceLockFileFactory
                 ];
             }
             $declarations = isset($memberNames[$name])
-                ? $package->manifest->declaredDependencies(true, true)
+                ? $package->manifest->declaredDependencyEdges(true, true)
                 : $package->manifest->dependencies;
             $packages[$name] = new LockedPackage(
                 $package->manifest->package->name,
@@ -58,7 +58,7 @@ final class WorkspaceLockFileFactory
     }
 
     /**
-     * @param array<string, DependencyDeclaration> $declarations
+     * @param list<DependencyDeclaration>|array<string, DependencyDeclaration> $declarations
      * @return list<LockedDependency>
      */
     private function edges(array $declarations): array

@@ -14,6 +14,7 @@ use Doria\Baton\Manifest\GitDependencySource;
 use Doria\Baton\Manifest\ManifestLoader;
 use Doria\Baton\Manifest\Schema2Manifest;
 use Doria\Baton\Manifest\SelectedPackageTarget;
+use Doria\Baton\Source\DiscoveredSource;
 use Doria\Baton\Source\SourceDiscovery;
 use Doria\Baton\Tests\TestCase;
 
@@ -70,6 +71,43 @@ final class DependencyResolverTest extends TestCase
         $graph = $this->resolver($workspace)->resolveFresh($root, $this->manifest($root), NetworkPolicy::Offline);
 
         self::assertSame('local/support', $graph->packages['support']->manifest->package->compilerIdentity);
+    }
+
+    public function testOnePackageRetainsInventoriesForLibraryAndProcessorRoles(): void
+    {
+        $workspace = $this->temporaryDirectory('dual target dependency');
+        $this->package($workspace, 'dual', 'acme/dual', binary: true);
+        $root = $this->package($workspace, 'root', 'acme/root', ['acme/dual' => '../dual']);
+        self::assertNotFalse(file_put_contents($root . '/Baton.toml', <<<'TOML'
+
+[processors]
+"acme/dual" = { source = "path", path = "../dual", binary = "tool", attributes = ["Acme\\Generate"] }
+TOML, FILE_APPEND));
+
+        $graph = $this->resolver($workspace)->resolveFresh(
+            $root,
+            $this->manifest($root),
+            NetworkPolicy::Offline,
+            processors: true,
+        );
+        $package = $graph->packages['acme/dual'];
+        $library = $package->manifest->targets->library;
+        $binary = $package->manifest->targets->binary('tool');
+        self::assertNotNull($library);
+        self::assertNotNull($binary);
+        $libraryPaths = array_map(
+            static fn (DiscoveredSource $source): string => $source->relativePath,
+            $package->inventoryFor(new SelectedPackageTarget($library))->sources,
+        );
+        $processorPaths = array_map(
+            static fn (DiscoveredSource $source): string => $source->relativePath,
+            $package->inventoryFor(new SelectedPackageTarget($binary))->sources,
+        );
+
+        self::assertNotContains('bin/tool.doria', $libraryPaths);
+        self::assertContains('bin/tool.doria', $processorPaths);
+        self::assertContains('src/Library.doria', $libraryPaths);
+        self::assertContains('src/Library.doria', $processorPaths);
     }
 
     public function testDependencyCycleReportsTheCompleteCycleAndSourceKinds(): void

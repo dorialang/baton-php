@@ -43,7 +43,7 @@ final class LockFileFactory
                 $dependencies,
             );
         }
-        $rootDependencies = $this->edges($graph->manifest->declaredDependencies(true, true));
+        $rootDependencies = $this->edges($graph->manifest->declaredDependencyEdges(true, true));
 
         return new LockFile(
             $graph->manifest->package->name,
@@ -56,7 +56,7 @@ final class LockFileFactory
     }
 
     /**
-     * @param array<string, DependencyDeclaration> $declarations
+     * @param list<DependencyDeclaration>|array<string, DependencyDeclaration> $declarations
      * @return list<LockedDependency>
      */
     private function edges(array $declarations): array

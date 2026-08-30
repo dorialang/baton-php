@@ -67,13 +67,17 @@ final class DependencyResolver
 
     private readonly DependencyCache $cache;
 
-    /** @param list<string> $unlockedPackages */
+    /**
+     * @param list<string> $unlockedPackages
+     * @param list<string> $selectedPackages
+     */
     public function resolveWorkspace(
         WorkspaceContext $workspace,
         NetworkPolicy $network,
         ?WorkspaceLockFile $lock = null,
         bool $strictLock = false,
         array $unlockedPackages = [],
+        array $selectedPackages = [],
     ): ResolvedWorkspaceGraph {
         $this->resolved = [];
         $this->active = [];
@@ -99,24 +103,46 @@ final class DependencyResolver
                 $this->processorTargets[$processor->package()] = $processor->binary;
             }
         }
-        foreach ($workspace->sortedMembers() as $member) {
-            foreach ($member->manifest->declaredDependencies(true, true) as $dependency) {
-                $this->visit(
-                    $dependency,
-                    $member->root,
-                    [$member->manifest->package->name],
-                    $workspace->root,
-                    $member->manifest->package->name,
-                    $network,
+        if ($selectedPackages === []) {
+            foreach ($workspace->sortedMembers() as $member) {
+                foreach ($member->manifest->declaredDependencyEdges(true, true) as $dependency) {
+                    $this->visit(
+                        $dependency,
+                        $member->root,
+                        [$member->manifest->package->name],
+                        $workspace->root,
+                        $member->manifest->package->name,
+                        $network,
+                        $lock,
+                        $unlockedPackages,
+                        $strictLock,
+                    );
+                }
+            }
+        } else {
+            if (!$strictLock) {
+                throw new \LogicException('Selected workspace resolution requires a strict lockfile.');
+            }
+            $visited = [];
+            foreach ($selectedPackages as $package) {
+                $this->visitLockedWorkspacePackage(
+                    $package,
+                    $workspace,
                     $lock,
-                    $unlockedPackages,
-                    $strictLock,
+                    $network,
+                    $visited,
                 );
             }
         }
         $this->throwResolutionConflicts();
+        $selectedClosure = $selectedPackages === []
+            ? null
+            : array_fill_keys($this->lockedClosure($lock, $selectedPackages), true);
         foreach ($workspace->sortedMembers() as $member) {
             $name = $member->manifest->package->name;
+            if ($selectedClosure !== null && !isset($selectedClosure[$name])) {
+                continue;
+            }
             if (isset($this->resolved[$name])) {
                 continue;
             }
@@ -150,7 +176,9 @@ final class DependencyResolver
 
         if ($lock !== null && $strictLock) {
             $resolved = array_keys($this->resolved);
-            $locked = array_keys($lock->packages);
+            $locked = $selectedPackages === []
+                ? array_keys($lock->packages)
+                : $this->lockedClosure($lock, $selectedPackages);
             sort($resolved, SORT_STRING);
             sort($locked, SORT_STRING);
             if ($resolved !== $locked) {
@@ -163,6 +191,79 @@ final class DependencyResolver
             $workspaceFingerprint,
             $this->resolved,
         );
+    }
+
+    /**
+     * @param array<string, true> $visited
+     */
+    private function visitLockedWorkspacePackage(
+        string $package,
+        WorkspaceContext $workspace,
+        WorkspaceLockFile $lock,
+        NetworkPolicy $network,
+        array &$visited,
+    ): void {
+        if (isset($visited[$package])) {
+            return;
+        }
+        $visited[$package] = true;
+        $locked = $lock->packages[$package]
+            ?? throw new \LogicException("Selected locked workspace package `{$package}` is missing.");
+        if ($locked->source['kind'] === 'workspace') {
+            $member = $workspace->members[$package]
+                ?? throw new \LogicException("Locked workspace member `{$package}` is missing.");
+            foreach ($locked->dependencies as $dependency) {
+                $dependencyPackage = $lock->packages[$dependency->package];
+                if ($dependencyPackage->source['kind'] === 'workspace') {
+                    $this->visitLockedWorkspacePackage(
+                        $dependency->package,
+                        $workspace,
+                        $lock,
+                        $network,
+                        $visited,
+                    );
+                    continue;
+                }
+                $this->visit(
+                    $this->declarationFromLock($dependencyPackage, $dependency->kind),
+                    $workspace->root,
+                    [$package],
+                    $workspace->root,
+                    $package,
+                    $network,
+                    $lock,
+                    [],
+                    true,
+                );
+            }
+
+            return;
+        }
+
+        $kinds = [];
+        foreach ($lock->packages as $candidate) {
+            foreach ($candidate->dependencies as $dependency) {
+                if ($dependency->package === $package) {
+                    $kinds[$dependency->kind->value] = $dependency->kind;
+                }
+            }
+        }
+        if ($kinds === []) {
+            $kinds[DependencyKind::Normal->value] = DependencyKind::Normal;
+        }
+        foreach ($kinds as $kind) {
+            $this->visit(
+                $this->declarationFromLock($locked, $kind),
+                $workspace->root,
+                ['workspace'],
+                $workspace->root,
+                'workspace',
+                $network,
+                $lock,
+                [],
+                true,
+            );
+        }
     }
 
     private function validateWorkspaceLock(
@@ -286,7 +387,7 @@ final class DependencyResolver
         }
 
         if ($selectedPackages === []) {
-            foreach ($manifest->declaredDependencies($development, $processors) as $dependency) {
+            foreach ($manifest->declaredDependencyEdges($development, $processors) as $dependency) {
                 $this->visit(
                     $dependency,
                     $canonicalRoot,
@@ -333,7 +434,7 @@ final class DependencyResolver
             }
             $activeRootPackages = array_map(
                 static fn (DependencyDeclaration $dependency): string => $dependency->package,
-                array_values($manifest->declaredDependencies($development, $processors)),
+                $manifest->declaredDependencyEdges($development, $processors),
             );
             $locked = $selectedPackages === []
                 ? $this->lockedClosure($lock, $activeRootPackages)
@@ -383,7 +484,7 @@ final class DependencyResolver
      * @param list<string> $selectedPackages
      * @return list<string>
      */
-    private function lockedClosure(LockFile $lock, array $selectedPackages): array
+    private function lockedClosure(LockFile|WorkspaceLockFile $lock, array $selectedPackages): array
     {
         $closure = [];
         $visit = function (string $package) use (&$visit, &$closure, $lock): void {
@@ -491,6 +592,15 @@ final class DependencyResolver
                 ];
             }
 
+            $selected = $this->dependencyTarget($declaration, $existing->manifest, $packageName, $chainText);
+            if (!$existing->hasInventory($selected)) {
+                $inventory = (new SourceDiscovery($existing->source->root))->discover(
+                    $existing->manifest,
+                    $selected,
+                );
+                $this->resolved[$packageName] = $existing->withInventory($selected, $inventory);
+            }
+
             return;
         }
         $manifest = $this->dependencyManifest($source->root, $packageName);
@@ -508,37 +618,7 @@ final class DependencyResolver
                 'B0334',
             );
         }
-        if ($manifest->targets->library === null && $declaration->kind !== DependencyKind::Processor) {
-            throw $this->error(
-                'Dependency Package Requires A Library Target',
-                "Dependency `{$packageName}` has no `[targets.library]`.\nChain: {$chainText}",
-                'B0336',
-            );
-        }
-        if ($declaration->kind === DependencyKind::Processor) {
-            if ($manifest->workspace !== null) {
-                throw $this->error(
-                    'Processor Package Cannot Declare A Workspace',
-                    "Processor package `{$packageName}` declares `[workspace]`.",
-                    'B0406',
-                );
-            }
-            if ($manifest->processors !== []) {
-                throw $this->error(
-                    'Processor Package Cannot Declare Processors',
-                    "Processor package `{$packageName}` declares processor recursion.",
-                    'B0407',
-                );
-            }
-            $target = $this->processorTargets[$packageName] ?? null;
-            if ($target === null || $manifest->targets->binary($target) === null) {
-                throw $this->error(
-                    'Processor Binary Target Is Missing',
-                    "Processor package `{$packageName}` does not declare binary target `{$target}`.",
-                    'B0408',
-                );
-            }
-        }
+        $selected = $this->dependencyTarget($declaration, $manifest, $packageName, $chainText);
         if ($declaration->version !== null
             && !$declaration->version->matches($manifest->package->version)
         ) {
@@ -564,15 +644,16 @@ final class DependencyResolver
         }
 
         $this->roots[$source->root] = $packageName;
-        $selectedTarget = $declaration->kind === DependencyKind::Processor
-            ? $manifest->targets->binary($this->processorTargets[$packageName])
-            : $manifest->targets->library;
-        if ($selectedTarget === null) {
-            throw new \LogicException('Resolved package target must exist.');
+        $canonicalTarget = new SelectedPackageTarget($manifest->targets->library ?? $selected->target);
+        $canonicalInventory = (new SourceDiscovery($source->root))->discover($manifest, $canonicalTarget);
+        $resolved = (new ResolvedPackage($manifest, $source, $fingerprint, $canonicalInventory))
+            ->withInventory($canonicalTarget, $canonicalInventory, true);
+        if (!$resolved->hasInventory($selected)) {
+            $resolved = $resolved->withInventory(
+                $selected,
+                (new SourceDiscovery($source->root))->discover($manifest, $selected),
+            );
         }
-        $selected = new SelectedPackageTarget($selectedTarget);
-        $inventory = (new SourceDiscovery($source->root))->discover($manifest, $selected);
-        $resolved = new ResolvedPackage($manifest, $source, $fingerprint, $inventory);
         $this->resolved[$packageName] = $resolved;
         $this->active[$packageName] = $declaration->source->describe();
         foreach ($manifest->dependencies as $dependency) {
@@ -589,6 +670,51 @@ final class DependencyResolver
             );
         }
         unset($this->active[$packageName]);
+    }
+
+    private function dependencyTarget(
+        DependencyDeclaration $declaration,
+        Schema2Manifest $manifest,
+        string $packageName,
+        string $chain,
+    ): SelectedPackageTarget {
+        if ($declaration->kind !== DependencyKind::Processor) {
+            $target = $manifest->targets->library;
+            if ($target === null) {
+                throw $this->error(
+                    'Dependency Package Requires A Library Target',
+                    "Dependency `{$packageName}` has no `[targets.library]`.\nChain: {$chain}",
+                    'B0336',
+                );
+            }
+
+            return new SelectedPackageTarget($target);
+        }
+        if ($manifest->workspace !== null) {
+            throw $this->error(
+                'Processor Package Cannot Declare A Workspace',
+                "Processor package `{$packageName}` declares `[workspace]`.",
+                'B0406',
+            );
+        }
+        if ($manifest->processors !== []) {
+            throw $this->error(
+                'Processor Package Cannot Declare Processors',
+                "Processor package `{$packageName}` declares processor recursion.",
+                'B0407',
+            );
+        }
+        $name = $this->processorTargets[$packageName] ?? null;
+        $target = $name === null ? null : $manifest->targets->binary($name);
+        if ($target === null) {
+            throw $this->error(
+                'Processor Binary Target Is Missing',
+                "Processor package `{$packageName}` does not declare binary target `{$name}`.",
+                'B0408',
+            );
+        }
+
+        return new SelectedPackageTarget($target);
     }
 
     private function throwResolutionConflicts(): void
@@ -806,7 +932,7 @@ final class DependencyResolver
     ): array
     {
         $edges = [];
-        foreach ($manifest->declaredDependencies($development, $processors) as $dependency) {
+        foreach ($manifest->declaredDependencyEdges($development, $processors) as $dependency) {
             $edges[] = new LockedDependency(
                 $dependency->package,
                 $dependency->version?->expression,

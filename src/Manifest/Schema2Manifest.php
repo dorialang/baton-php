@@ -41,4 +41,28 @@ final readonly class Schema2Manifest
 
         return $declared;
     }
+
+    /** @return list<DependencyDeclaration> */
+    public function declaredDependencyEdges(bool $development, bool $processors): array
+    {
+        $declared = array_values($this->dependencies);
+        if ($development) {
+            $declared = [...$declared, ...array_values($this->developmentDependencies)];
+        }
+        if ($processors) {
+            $declared = [
+                ...$declared,
+                ...array_map(
+                    static fn (ProcessorDeclaration $processor): DependencyDeclaration => $processor->dependency,
+                    array_values($this->processors),
+                ),
+            ];
+        }
+        usort($declared, static fn (DependencyDeclaration $left, DependencyDeclaration $right): int => strcmp(
+            $left->package . "\0" . $left->kind->value,
+            $right->package . "\0" . $right->kind->value,
+        ));
+
+        return $declared;
+    }
 }

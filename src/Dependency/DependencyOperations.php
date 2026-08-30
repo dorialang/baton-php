@@ -175,6 +175,13 @@ final readonly class DependencyOperations
             }
         }
 
-        return $this->resolver->resolveWorkspace($workspace, $network, $lock, true);
+        return $this->resolver->resolveWorkspace(
+            $workspace,
+            $network,
+            $lock,
+            true,
+            [],
+            $selected,
+        );
     }
 }

@@ -38,7 +38,7 @@ final class ProjectDocumentBuilder
         $selected = new SelectedPackageTarget(new LibraryTarget('baton-tooling'));
         [$rootPackage, $resolvedGraph] = $this->ensureRootPackage($rootMember, $resolvedGraph, $selected);
         $visible = $this->visiblePackages($rootPackage, $resolvedGraph, $development, $selection->aggregate);
-        $registry = $this->generatedRegistry($selection, $visible);
+        $registry = $this->generatedRegistry($selection, $visible, $resolvedGraph->packages);
         [$rootPackage, $resolvedGraph, $visible] = $this->withGeneratedSources(
             $rootPackage,
             $resolvedGraph,
@@ -208,9 +208,10 @@ final class ProjectDocumentBuilder
 
     /**
      * @param array<string, ResolvedPackage> $visible
-     * @return array{compilerRevision: string|null, inputs: array<string, list<GeneratedSourceInput>>, sources: list<array{identity: string, package: string, processor: string, path: string, generatedFor: string, sha256: string}>}
+     * @param array<string, ResolvedPackage> $packages
+     * @return array{compilerRevision: string|null, inputs: array<string, list<GeneratedSourceInput>>, sources: list<array{identity: string, package: string, processor: string, path: string, generatedFor: string, requestSha256: string, sha256: string}>}
      */
-    private function generatedRegistry(ProjectSelection $selection, array $visible): array
+    private function generatedRegistry(ProjectSelection $selection, array $visible, array $packages): array
     {
         $owners = array_filter(
             $visible,
@@ -219,7 +220,7 @@ final class ProjectDocumentBuilder
         if ($owners === []) {
             return ['compilerRevision' => null, 'inputs' => [], 'sources' => []];
         }
-        $registry = (new GeneratedSourceRegistry())->requireValid($selection->lockRoot, $owners);
+        $registry = (new GeneratedSourceRegistry())->requireValid($selection->lockRoot, $owners, $packages);
 
         return [
             'compilerRevision' => $registry['compilerRevision'],
@@ -263,12 +264,7 @@ final class ProjectDocumentBuilder
                 $target,
                 $inputs,
             );
-            $replacement = new ResolvedPackage(
-                $package->manifest,
-                $package->source,
-                $package->manifestFingerprint,
-                $inventory,
-            );
+            $replacement = $package->withInventory($target, $inventory, true);
             $packages[$name] = $replacement;
             $visible[$name] = $replacement;
             if ($name === $root->manifest->package->name) {
@@ -368,7 +364,7 @@ final class ProjectDocumentBuilder
     }
 
     /**
-     * @param array{compilerRevision: string|null, inputs: array<string, list<GeneratedSourceInput>>, sources: list<array{identity: string, package: string, processor: string, path: string, generatedFor: string, sha256: string}>} $registry
+     * @param array{compilerRevision: string|null, inputs: array<string, list<GeneratedSourceInput>>, sources: list<array{identity: string, package: string, processor: string, path: string, generatedFor: string, requestSha256: string, sha256: string}>} $registry
      * @return list<array<string, string>>
      */
     private function generatedDocuments(array $registry, bool $development): array

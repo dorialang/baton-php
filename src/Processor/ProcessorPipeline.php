@@ -10,7 +10,6 @@ use Doria\Baton\Build\BuildPlanWriter;
 use Doria\Baton\Compiler\CompilerAdapter;
 use Doria\Baton\Compiler\MetadataReader;
 use Doria\Baton\Dependency\NetworkPolicy;
-use Doria\Baton\Dependency\PathContentFingerprint;
 use Doria\Baton\Dependency\ResolvedDependencyGraph;
 use Doria\Baton\Dependency\ResolvedPackage;
 use Doria\Baton\Dependency\ResolvedWorkspaceGraph;
@@ -73,7 +72,10 @@ final class ProcessorPipeline
             (new GeneratedSourceRegistry())->replaceOwner(
                 $storageRoot,
                 $toolchain->identity->commit,
-                $owner->package->name,
+                $owner,
+                $inventory,
+                $graph->packages,
+                [],
                 [],
             );
             (new ManagedInventoryStore())->removeProcessors(
@@ -133,10 +135,15 @@ final class ProcessorPipeline
             }
             $request = $this->request($metadata, $declaration, $applications);
             $requestBytes = $this->json($request);
+            $requestHash = hash('sha256', $requestBytes);
             $processor = $graph->packages[$declaration->package()] ?? null;
             if ($processor === null) {
                 throw $this->error('B0408', 'Processor Package Is Missing', $declaration->package());
             }
+            $processorSourceIdentity = (new ProcessorSourceIdentity())->calculate(
+                $processor,
+                $declaration->binary,
+            );
             $binary = $this->processorBinary(
                 $storageRoot,
                 $processor,
@@ -151,7 +158,7 @@ final class ProcessorPipeline
                 $toolchain->identity->commit,
                 (string) $metadata['graphFingerprint'],
                 $declaration->package(),
-                $this->processorSourceIdentity($processor),
+                $processorSourceIdentity,
                 $binaryHash,
                 implode("\0", $declaration->attributes),
                 $requestBytes,
@@ -209,16 +216,17 @@ final class ProcessorPipeline
                     'processor' => $declaration->package(),
                     'path' => $ownerRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $source['relativePath']),
                     'generatedFor' => $source['generatedFor'],
+                    'requestSha256' => $requestHash,
                     'sha256' => $source['sha256'],
                 ];
             }
             $processorFacts[] = [
                 'owner' => $owner->package->compilerIdentity,
                 'processor' => $declaration->package(),
-                'sourceIdentitySha256' => hash('sha256', $this->processorSourceIdentity($processor)),
+                'sourceIdentitySha256' => hash('sha256', $processorSourceIdentity),
                 'binaryTarget' => $declaration->binary,
                 'binarySha256' => $binaryHash,
-                'requestSha256' => hash('sha256', $requestBytes),
+                'requestSha256' => $requestHash,
                 'responseSha256' => hash('sha256', $responseBytes),
                 'graphFingerprint' => (string) $metadata['graphFingerprint'],
                 'generatedSha256' => hash('sha256', $this->json($published)),
@@ -227,8 +235,11 @@ final class ProcessorPipeline
         (new GeneratedSourceRegistry())->replaceOwner(
             $storageRoot,
             $toolchain->identity->commit,
-            $owner->package->name,
+            $owner,
+            $inventory,
+            $graph->packages,
             $registry,
+            $processorFacts,
         );
         (new ManagedInventoryStore())->recordProcessors(
             $storageRoot,
@@ -284,7 +295,7 @@ final class ProcessorPipeline
         $artifact = $directory . DIRECTORY_SEPARATOR . $declaration->binary
             . (PHP_OS_FAMILY === 'Windows' ? '.exe' : '');
         $identityPath = $directory . DIRECTORY_SEPARATOR . 'identity.json';
-        $sourceIdentity = $this->processorSourceIdentity($processor);
+        $sourceIdentity = (new ProcessorSourceIdentity())->calculate($processor, $declaration->binary);
         $expected = [
             'compilerCommit' => $toolchain->identity->commit,
             'processorPackage' => $processor->manifest->package->compilerIdentity,
@@ -322,7 +333,7 @@ final class ProcessorPipeline
             $processor->source->root,
             $processor->manifest,
             $selected,
-            $processor->inventory,
+            $processor->inventoryFor($selected),
             'fast',
             $processorGraph,
             false,
@@ -347,19 +358,6 @@ final class ProcessorPipeline
         );
 
         return $artifact;
-    }
-
-    private function processorSourceIdentity(ResolvedPackage $processor): string
-    {
-        if ($processor->source->kind === 'git') {
-            return $processor->source->identity();
-        }
-
-        return $processor->source->identity() . "\0content\0"
-            . (new PathContentFingerprint())->calculate(
-                $processor->manifestFingerprint,
-                $processor->inventory,
-            );
     }
 
     /** @return array<string, ResolvedPackage> */
