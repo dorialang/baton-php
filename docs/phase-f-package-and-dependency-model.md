@@ -25,6 +25,8 @@ Stage 33 Slice 1 added strict schema 2 and source inventory. Slice 2 added norma
 dependency resolution, locks, exact Git cache entries, and multi-package plans.
 Slice 3 completes workspaces, development dependencies, metadata-driven tests,
 processors, generated sources, graph commands, and project inventory.
+The post-Stage-33 native testing foundation keeps that project contract intact
+while schema 3 unifies low-level and behavioral compiler test records for Baton.
 
 ## Schema 2
 
@@ -216,7 +218,9 @@ and [Offline operation](offline.md).
 ## Delivery Sequence
 
 Stages 31 and 32 are complete. Stage 33 Slices 1, 2, and 3 are complete. Stage
-33 and Phase F are complete; Stage 34 single class inheritance is next.
+33 and Phase F remain complete. Native Testing Foundation Slice 1 adds unified
+behavioral discovery without reopening Phase F; the broader foundation remains
+in progress, and Stage 34 single class inheritance waits for its completion.
 Those slices run in this disposable PHP UX bootstrap to validate and freeze the
 observable contract. Decision 0124 then requires a parity-gated Pre-Stage-45
 port to the clean Doria-native `dorialang/baton` repository, production release

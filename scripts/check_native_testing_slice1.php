@@ -54,6 +54,12 @@ $require('docs/testing.md', [
     'stable compiler test',
     'never parses Doria source',
 ]);
+$require('docs/project-inventory.md', ['metadata schema 3', 'without reading source bodies']);
+$require('docs/incremental-inventory.md', ['stable test identity', 'Display and dispatch identities remain separate']);
+$require('docs/phase-f-package-and-dependency-model.md', [
+    'Phase F remain complete',
+    'Stage 34 single class inheritance waits',
+]);
 
 $discovery = $read('src/Testing/TestDiscovery.php');
 foreach (['file_get_contents(', 'preg_match(', 'preg_match_all(', "'describe'", '"describe"', "'it'", '"it"'] as $forbidden) {

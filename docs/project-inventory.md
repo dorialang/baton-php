@@ -26,3 +26,8 @@ Language tooling consumes this protocol rather than parsing `Baton.toml`,
 `Baton.lock`, private inventory, or processor responses. Aggregate workspace
 plans retain package boundaries and direct edge categories; they do not invent
 one runtime entry or flatten members into mutual dependencies.
+
+The project document supplies source scopes and package graphs to compiler-backed
+tooling. It does not duplicate compiler test facts. Low-level and behavioral
+tests are unified by `doriac` metadata schema 3, and Baton consumes that test
+table without reading source bodies or inferring declarations from paths.

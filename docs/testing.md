@@ -30,3 +30,9 @@ with the package, test, and exit status. `--show-output` replays streams for
 successful tests too. Development sources, direct development dependencies,
 and valid generated development sources are active only in the tested package's
 test graph; dependency-owned development dependencies do not become visible.
+
+Behavioral declaration and callable semantics remain compiler-owned. The native
+testing foundation is still in progress: fluent `expect`/`fail` assertions and
+final assertion-aware hierarchy reporting arrive in later foundation slices.
+Until then, checked Errors and panics use the existing generic failed-test
+reporting while preserving process isolation.
