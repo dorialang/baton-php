@@ -25,12 +25,12 @@ Stage 33 Slice 1 added strict schema 2 and source inventory. Slice 2 added norma
 dependency resolution, locks, exact Git cache entries, and multi-package plans.
 Slice 3 completes workspaces, development dependencies, metadata-driven tests,
 processors, generated sources, graph commands, and project inventory.
-The post-Stage-33 native testing foundation keeps that project contract intact
+The post-Stage-33 Native Testing Foundation keeps that project contract intact
 while schema 3 unifies low-level and behavioral compiler test records for Baton.
-Slices 1 and 2 are implemented: core expectations are compiler-owned and Baton
-continues to treat escaping assertions as generic failed isolated processes.
-Slice 3 remains next for assertion-specific classification and hierarchical
-presentation; the foundation remains incomplete and Stage 34 remains blocked.
+All three slices are complete: expectations remain compiler-owned, while Baton
+strictly decodes structured runtime outcomes, classifies exactly five process
+results, and presents compiler-authored hierarchy in metadata order. No project,
+metadata, processor, or public inventory schema changed. Stage 34 is next.
 
 ## Schema 2
 
@@ -222,10 +222,11 @@ and [Offline operation](offline.md).
 ## Delivery Sequence
 
 Stages 31 and 32 are complete. Stage 33 Slices 1, 2, and 3 are complete. Stage
-33 and Phase F remain complete. Native Testing Foundation Slice 1 adds unified
-behavioral discovery without reopening Phase F; the broader foundation remains
-in progress, and Stage 34 single class inheritance waits for its completion.
-Those slices run in this disposable PHP UX bootstrap to validate and freeze the
+33 and Phase F remain complete. The three Native Testing Foundation slices add
+unified behavioral discovery, compiler-owned expectations, and strict
+five-category reporting without reopening Phase F. The foundation is complete,
+and Stage 34 single class inheritance is next. Those slices run in this
+disposable PHP UX bootstrap to validate and freeze the
 observable contract. Decision 0124 then requires a parity-gated Pre-Stage-45
 port to the clean Doria-native `dorialang/baton` repository, production release
 ownership transfer, and removal of the Baton PHP payload before the unsuffixed

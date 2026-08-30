@@ -37,6 +37,7 @@
         "check:stage33-slice3": "php scripts/check_stage33_slice3_phase_f_closure.php",
         "check:native-testing-slice1": "php scripts/check_native_testing_slice1.php",
         "check:native-testing-slice2": "php scripts/check_native_testing_slice2.php",
+        "check:native-testing-slice3": "php scripts/check_native_testing_slice3.php",
         "build:phar": "php -d phar.readonly=0 packaging/build-phar.php",
         "smoke:phar:stage33-slice1": "php scripts/smoke_stage33_slice1_phar.php build/baton.phar",
         "smoke:phar:stage33-slice2": "php scripts/smoke_stage33_slice2_phar.php build/baton.phar",
@@ -51,7 +52,8 @@
             "@check:stage33-slice2",
             "@check:stage33-slice3",
             "@check:native-testing-slice1",
-            "@check:native-testing-slice2"
+            "@check:native-testing-slice2",
+            "@check:native-testing-slice3"
         ]
     },
     "authors": [

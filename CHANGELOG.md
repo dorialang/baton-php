@@ -48,6 +48,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Dor
   isolated test-process boundary, including generic failure reporting, raw
   failed-output replay, and continuation to later tests without source or
   assertion-outcome parsing in Baton.
+- Native Testing Slice 3 strict DORIAO2/DORIAO3/DORIAO4 outcome decoding,
+  five-category classification, compiler-authored hierarchy reporting,
+  source-order filtering, and structured collection/Error assertion details.
 - `baton tree`, `baton why`, and deterministic `baton project --json` tooling inventory.
 - Private content-hashed project, processor, generated-source, and test inventory.
 
@@ -65,5 +68,3 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Dor
 - Nested/composable workspaces, package registries, verified archives,
   publishing, processor sandboxing, recursive processors, and parallel tests.
 - The mandatory Pre-Stage-45 parity port from this PHP bootstrap to native Baton.
-- Native Testing Slice 3 assertion classification, hierarchical presentation,
-  collection/Error expectations, and bounded difference rendering.

@@ -32,18 +32,18 @@ final class TestDiscoveryTest extends TestCase
 
         $all = (new TestDiscovery())->discover($this->metadata($callables, $tests), 'acme/package', null);
         self::assertSame(
-            ['test:alpha-early', 'test:alpha-late', 'test:zeta'],
+            ['test:zeta', 'test:alpha-late', 'test:alpha-early'],
             array_column($all, 'identity'),
         );
-        self::assertSame('Acme\\Tests\\__doria_test_early', $all[0]->callableCanonicalName);
-        self::assertSame(['IOError'], $all[2]->requiredEffects);
+        self::assertSame('Acme\\Tests\\zeta', $all[0]->callableCanonicalName);
+        self::assertSame(['IOError'], $all[0]->requiredEffects);
 
         $filtered = (new TestDiscovery())->discover(
             $this->metadata($callables, $tests),
             'acme/package',
             'Suite > alpha',
         );
-        self::assertSame(['test:alpha-early', 'test:alpha-late'], array_column($filtered, 'identity'));
+        self::assertSame(['test:alpha-late', 'test:alpha-early'], array_column($filtered, 'identity'));
         self::assertSame([], (new TestDiscovery())->discover(
             $this->metadata($callables, $tests),
             'acme/package',

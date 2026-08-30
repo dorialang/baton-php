@@ -53,9 +53,11 @@ $require('docs/baton-php-development-plan.md', [
     '### Stage 33 Slice 3 - Complete',
     'Stage 33 and Phase F are complete',
     '### Native Testing Foundation Slice 1 - Complete',
-    '### Native Testing Foundation Slice 2 - Next',
+    '### Native Testing Foundation Slice 2 - Complete',
+    '### Native Testing Foundation Slice 3 - Complete',
+    'Foundation is complete and Stage 34',
     'Stage 34 single class inheritance',
-    'waits for the foundation to complete',
+    'is next',
 ]);
 $require('README.md', ['Stage 33 is complete', 'mandatory Pre-Stage-45']);
 

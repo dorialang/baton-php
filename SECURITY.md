@@ -44,6 +44,10 @@ Baton is designed around these boundaries:
   remain contained after canonicalization and symlink resolution;
 - external processes are launched with argument vectors, bounded output, and
   bounded execution time rather than shell interpolation;
+- runtime test outcome files are treated as untrusted bounded binary input:
+  Baton uses nonce-bearing managed paths, rejects malformed or oversized
+  DORIAO2/DORIAO3/DORIAO4 records and trailing bytes, and removes each outcome
+  after classification;
 - diagnostic commands must not expose secrets.
 
 Changes that weaken one of these boundaries require explicit security review and regression coverage.
