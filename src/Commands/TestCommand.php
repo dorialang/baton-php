@@ -54,7 +54,11 @@ final class TestCommand extends BatonCommand
 
         $selected = 0;
         $passed = 0;
-        $failed = 0;
+        $assertionFailed = 0;
+        $unexpectedCheckedError = 0;
+        $fatalPanic = 0;
+        $abnormalProcessFailure = 0;
+        $packageFailures = 0;
         foreach ($members as $member) {
             try {
                 $result = (new TestPackageRunner())->run(
@@ -71,20 +75,37 @@ final class TestCommand extends BatonCommand
                 );
                 $selected += $result['selected'];
                 $passed += $result['passed'];
-                $failed += $result['failed'];
+                $assertionFailed += $result['assertionFailed'];
+                $unexpectedCheckedError += $result['unexpectedCheckedError'];
+                $fatalPanic += $result['fatalPanic'];
+                $abnormalProcessFailure += $result['abnormalProcessFailure'];
             } catch (BatonError $error) {
-                ++$failed;
+                ++$packageFailures;
                 $this->errorOutput($output)->writeln($error->render());
             }
         }
-        if ($filter !== null && $selected === 0 && $failed === 0) {
+        if ($filter !== null && $selected === 0 && $packageFailures === 0) {
             throw new BatonError(
                 'B0422',
-                'No Tests Match Filter',
+                'No Tests Match The Filter',
                 "No test display name contains the case-sensitive substring `{$filter}`.",
             );
         }
-        $output->writeln("Tests: {$selected} selected, {$passed} passed, {$failed} failed");
+        $output->writeln('');
+        $output->writeln('Test Summary');
+        $output->writeln('');
+        $output->writeln(sprintf('  Passed:                    %d', $passed));
+        $output->writeln(sprintf('  Assertion Failed:          %d', $assertionFailed));
+        $output->writeln(sprintf('  Unexpected Checked Error:  %d', $unexpectedCheckedError));
+        $output->writeln(sprintf('  Fatal Panic:               %d', $fatalPanic));
+        $output->writeln(sprintf('  Abnormal Process Failure:  %d', $abnormalProcessFailure + $packageFailures));
+        $output->writeln(sprintf('  Total:                     %d', $selected + $packageFailures));
+
+        $failed = $assertionFailed
+            + $unexpectedCheckedError
+            + $fatalPanic
+            + $abnormalProcessFailure
+            + $packageFailures;
 
         return $failed === 0 ? self::SUCCESS : self::FAILURE;
     }

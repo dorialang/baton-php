@@ -10,6 +10,7 @@ final readonly class ExecutableTest
 {
     /**
      * @param list<string> $pathSegments
+     * @param list<string> $suitePathIdentities
      * @param list<string> $requiredEffects
      * @param list<string> $ambientEffects
      */
@@ -22,7 +23,9 @@ final readonly class ExecutableTest
         public ?string $authoredSpelling,
         public ?string $suite,
         public array $pathSegments,
+        public array $suitePathIdentities,
         public string $source,
+        public int $authoredOrdinal,
         public array $requiredEffects,
         public array $ambientEffects,
         public MetadataLocation $location,

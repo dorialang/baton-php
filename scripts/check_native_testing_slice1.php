@@ -58,7 +58,7 @@ $require('docs/project-inventory.md', ['metadata schema 3', 'without reading sou
 $require('docs/incremental-inventory.md', ['stable test identity', 'Display and dispatch identities remain separate']);
 $require('docs/phase-f-package-and-dependency-model.md', [
     'Phase F remain complete',
-    'Stage 34 single class inheritance waits',
+    'Stage 34 single class inheritance is next',
 ]);
 
 $discovery = $read('src/Testing/TestDiscovery.php');

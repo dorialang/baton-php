@@ -19,8 +19,6 @@ use Doria\Baton\Manifest\Schema2Manifest;
 use Doria\Baton\Manifest\SelectedPackageTarget;
 use Doria\Baton\Inventory\ManagedInventoryStore;
 use Doria\Baton\Process\BoundedProcessRunner;
-use Doria\Baton\Process\BoundedProcessTimedOut;
-use Doria\Baton\Process\ProcessOutputLimitExceeded;
 use Doria\Baton\Source\GeneratedSourceInput;
 use Doria\Baton\Source\SourceInventory;
 use Doria\Baton\Toolchain\ToolchainSelection;
@@ -410,19 +408,19 @@ final class ProcessorPipeline
         if (!is_dir($workingDirectory) && !@mkdir($workingDirectory, 0o755, true) && !is_dir($workingDirectory)) {
             throw $this->error('B0412', 'Processor Execution Failed', $workingDirectory);
         }
-        try {
-            $result = (new BoundedProcessRunner())->run(
-                [$binary],
-                $workingDirectory,
-                $this->sanitizedEnvironment(),
-                $request,
-                self::TIMEOUT_SECONDS,
-                self::STDOUT_LIMIT,
-                self::STDERR_LIMIT,
-            );
-        } catch (BoundedProcessTimedOut) {
+        $result = (new BoundedProcessRunner())->run(
+            [$binary],
+            $workingDirectory,
+            $this->sanitizedEnvironment(),
+            $request,
+            self::TIMEOUT_SECONDS,
+            self::STDOUT_LIMIT,
+            self::STDERR_LIMIT,
+        );
+        if ($result->timedOut) {
             throw $this->error('B0413', 'Processor Timed Out', $declaration->package());
-        } catch (ProcessOutputLimitExceeded) {
+        }
+        if ($result->outputLimitStream !== null) {
             throw $this->error('B0414', 'Processor Output Is Too Large', $declaration->package());
         }
         $stdout = $result->stdout;
@@ -433,11 +431,14 @@ final class ProcessorPipeline
         if ($stderr !== '') {
             fwrite(STDERR, "[processor {$declaration->package()} stderr]\n{$stderr}");
         }
-        if ($result->exitCode !== 0) {
+        if ($result->exitCode !== 0 || $result->signaled) {
+            $termination = $result->signaled
+                ? 'signal ' . ($result->signal ?? 'unknown')
+                : 'status ' . ($result->exitCode ?? 'unknown');
             throw $this->error(
                 'B0412',
                 'Processor Execution Failed',
-                "Processor `{$declaration->package()}` exited with status {$result->exitCode}.",
+                "Processor `{$declaration->package()}` exited with {$termination}.",
             );
         }
 

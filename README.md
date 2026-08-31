@@ -28,8 +28,9 @@ with no Baton PHP payload. Neither layout requires Rust, Cargo, system PHP,
 Composer, or a repository checkout.
 
 Run `baton doctor` after installation to verify component versions and hashes,
-host compatibility, and writable project/cache locations. Bootstrap prereleases
-also verify their private runtime.
+host compatibility, a real native compiler/runtime/linker probe, and writable
+project/cache locations. Bootstrap prereleases also verify their private
+runtime.
 
 ## Commands
 
@@ -118,13 +119,14 @@ transition parity-ports the frozen behavior to the clean `dorialang/baton`
 repository. The unsuffixed `2026.03.1` release is blocked until production
 toolchains use the native Baton executable and carry no Baton PHP runtime.
 
-Native Testing Foundation Slices 1 and 2 are implemented. Core compiler-owned
-`expect` and `fail` assertions run through `baton test` without Baton parsing
-Doria source or assertion output. In Slice 2, an escaping `AssertionError` is a
-normal failed test: raw failed output is replayed, later tests continue, and the
-suite exits nonzero. Assertion-specific classification, hierarchical output,
-and collection/Error expectations remain Slice 3; the foundation is not yet
-complete and Stage 34 remains blocked on its completion.
+The Native Testing Foundation is complete. Compiler-owned expectations run
+through `baton test` without Baton parsing Doria source or human diagnostics.
+Baton strictly decodes the compiler/runtime-owned DORIAO2, DORIAO3, and DORIAO4
+outcome records, classifies each isolated process as passed, assertion failed,
+unexpected checked Error, fatal panic, or abnormal process failure, and reports
+compiler-authored suite hierarchy in source order. Collection and checked-Error
+expectations use the same structured boundary; Stage 34 is now the next language
+stage.
 
 See [Phase F package and dependency model](docs/phase-f-package-and-dependency-model.md)
 for the complete target contract and its current-state boundary.

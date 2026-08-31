@@ -26,15 +26,18 @@ $require('docs/phase-f-package-and-dependency-model.md', [
     'Baton.lock',
     'global content-addressed cache',
     'Stage 33 Slices 1, 2, and 3 are complete',
-    'Native Testing Foundation Slice 1 adds unified',
-    'Stage 34 single class inheritance waits for its completion',
+    'The three Native Testing Foundation slices add',
+    'The foundation is complete',
+    'Stage 34 single class inheritance is next',
     'Pre-Stage-45',
 ]);
 $require('docs/baton-php-development-plan.md', [
     '### Native Testing Foundation Slice 1 - Complete',
-    '### Native Testing Foundation Slice 2 - Next',
+    '### Native Testing Foundation Slice 2 - Complete',
+    '### Native Testing Foundation Slice 3 - Complete',
+    'Foundation is complete and Stage 34',
     'Stage 34 single class inheritance',
-    'waits for the foundation to complete',
+    'is next',
 ]);
 $require('README.md', ['Stage 33 is complete', 'schema-1', 'workspaces', 'processors', 'project --json']);
 $require('SECURITY.md', ['no processor sandbox', 'Offline mode', 'argument vectors']);

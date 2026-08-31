@@ -786,6 +786,7 @@ Release channel
 Baton executable path
 Private PHP runtime path
 doriac path and version
+doriac native compile/runtime/linker probe
 doria-lsp path and version
 Host platform
 Host architecture
@@ -801,6 +802,10 @@ PASS
 WARNING
 FAIL
 ```
+
+The compiler probe uses a fixed minimal source and structured JSON diagnostics.
+An identity-compatible compiler that cannot produce a native executable is a
+`FAIL`, not a healthy toolchain.
 
 ### Acceptance Criteria
 
@@ -1323,13 +1328,19 @@ Compiler-authored schema 3 test inventory now unifies `#[Test]` methods and
 behavioral `describe`/`it`/`test` declarations. Baton discovers, filters, and
 dispatches those records without parsing Doria source.
 
-### Native Testing Foundation Slice 2 - Next
+### Native Testing Foundation Slice 2 - Complete
 
-Expectation execution and final test reporting land next. The broader Native
-Testing Foundation remains in progress, and Stage 34 single class inheritance
-waits for the foundation to complete. The mandatory Pre-Stage-45 Doria-native
-Baton transition remains scheduled and must parity-port this frozen observable
-contract before the unsuffixed release.
+Compiler-owned expectation execution, `AssertionError`, and generic isolated
+process continuation are implemented.
+
+### Native Testing Foundation Slice 3 - Complete
+
+Collection and checked-Error expectations, strict DORIAO2/DORIAO3/DORIAO4
+decoding, five-category classification, compiler-authored hierarchy, final
+filtering, and structured reporting are implemented. The Native Testing
+Foundation is complete and Stage 34 single class inheritance is next. The
+mandatory Pre-Stage-45 Doria-native Baton transition remains scheduled and must
+parity-port this frozen observable contract before the unsuffixed release.
 
 ### Add
 

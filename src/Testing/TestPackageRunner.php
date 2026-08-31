@@ -16,8 +16,6 @@ use Doria\Baton\Manifest\Schema2Manifest;
 use Doria\Baton\Manifest\SelectedPackageTarget;
 use Doria\Baton\Inventory\ManagedInventoryStore;
 use Doria\Baton\Process\BoundedProcessRunner;
-use Doria\Baton\Process\BoundedProcessTimedOut;
-use Doria\Baton\Process\ProcessOutputLimitExceeded;
 use Doria\Baton\Toolchain\ToolchainSelection;
 use Doria\Baton\Workspace\WorkspaceContext;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -28,7 +26,14 @@ final class TestPackageRunner
     private const OUTPUT_LIMIT = 67_108_864;
 
     /**
-     * @return array{selected: int, passed: int, failed: int}
+     * @return array{
+     *   selected: int,
+     *   passed: int,
+     *   assertionFailed: int,
+     *   unexpectedCheckedError: int,
+     *   fatalPanic: int,
+     *   abnormalProcessFailure: int
+     * }
      */
     public function run(
         string $projectRoot,
@@ -75,10 +80,11 @@ final class TestPackageRunner
             $manifest->package->compilerIdentity,
             $filter,
         );
+        $output->writeln($this->terminalSafe($manifest->package->name));
         if ($tests === []) {
-            $output->writeln("{$manifest->package->name}: 0 tests");
+            $output->writeln('  0 tests');
 
-            return ['selected' => 0, 'passed' => 0, 'failed' => 0];
+            return $this->counts(0);
         }
 
         $directory = $this->testDirectory($storageRoot, $toolchain, $profile, $manifest);
@@ -107,6 +113,8 @@ final class TestPackageRunner
         $testInventory = $this->json([
             'schemaVersion' => 1,
             'package' => $manifest->package->name,
+            'compilerRevisionExpected' => $toolchain->identity->commit,
+            'outcomeCategoryVocabularyVersion' => 1,
             'tests' => array_map($this->testFact(...), $tests),
             'metadataSha256' => hash('sha256', $metadataResult->stdout),
             'dispatcherSha256' => hash('sha256', $dispatcher),
@@ -144,24 +152,23 @@ final class TestPackageRunner
             array_map($this->testFact(...), $tests),
         );
 
-        $passed = 0;
-        $failed = 0;
+        $counts = $this->counts(count($tests));
+        $previousSuites = [];
         foreach ($tests as $test) {
-            $result = $this->execute($artifact, $test->identity, $projectRoot);
-            $success = $result['exitCode'] === 0;
-            if ($success) {
-                ++$passed;
-                $output->writeln("PASS {$manifest->package->name} {$test->displayName}");
-            } else {
-                ++$failed;
-                $output->writeln("FAIL {$manifest->package->name} {$test->displayName}");
+            $result = $this->execute($artifact, $test, $projectRoot, $directory);
+            $key = $this->countKey($result->category);
+            ++$counts[$key];
+            $this->renderHierarchy($output, $test, $result, $previousSuites);
+            $previousSuites = $test->suitePathIdentities;
+            if (!$result->category->passed()) {
+                $this->renderFailure($output, $test, $result);
             }
-            if ($showOutput || !$success) {
-                $this->renderOutput($output, $test, $result);
+            if ($showOutput || !$result->category->passed()) {
+                $this->renderOutput($output, $result);
             }
         }
 
-        return ['selected' => count($tests), 'passed' => $passed, 'failed' => $failed];
+        return $counts;
     }
 
     private function testDirectory(
@@ -411,48 +418,231 @@ final class TestPackageRunner
         return $object;
     }
 
-    /** @return array{exitCode: int, stdout: string, stderr: string} */
-    private function execute(string $artifact, string $test, string $workingDirectory): array
-    {
+    private function execute(
+        string $artifact,
+        ExecutableTest $test,
+        string $workingDirectory,
+        string $testDirectory,
+    ): TestExecutionResult {
+        $channel = new RuntimeOutcomeChannel($testDirectory, $test->identity);
+        $process = (new BoundedProcessRunner())->run(
+            [$artifact, $test->identity],
+            $workingDirectory,
+            $channel->environment(),
+            null,
+            self::PROCESS_TIMEOUT,
+            self::OUTPUT_LIMIT,
+            self::OUTPUT_LIMIT,
+        );
+        $decoded = $channel->read();
         try {
-            $result = (new BoundedProcessRunner())->run(
-                [$artifact, $test],
-                $workingDirectory,
+            $channel->remove();
+        } catch (BatonError $error) {
+            return TestExecutionResult::classify(
+                $process,
                 null,
-                null,
-                self::PROCESS_TIMEOUT,
-                self::OUTPUT_LIMIT,
-                self::OUTPUT_LIMIT,
+                'Runtime outcome cleanup failed: ' . $error->body,
             );
-        } catch (BoundedProcessTimedOut $error) {
-            return ['exitCode' => 1, 'stdout' => '', 'stderr' => $error->getMessage() . "\n"];
-        } catch (ProcessOutputLimitExceeded $error) {
-            return ['exitCode' => 1, 'stdout' => '', 'stderr' => $error->getMessage() . "\n"];
         }
 
-        return ['exitCode' => $result->exitCode, 'stdout' => $result->stdout, 'stderr' => $result->stderr];
+        return TestExecutionResult::classify($process, $decoded['outcome'], $decoded['error']);
+    }
+
+    /** @param list<string> $previousSuites */
+    private function renderHierarchy(
+        OutputInterface $output,
+        ExecutableTest $test,
+        TestExecutionResult $result,
+        array $previousSuites,
+    ): void {
+        $common = 0;
+        $limit = min(count($previousSuites), count($test->suitePathIdentities));
+        while ($common < $limit
+            && $previousSuites[$common] === $test->suitePathIdentities[$common]
+        ) {
+            ++$common;
+        }
+        for ($index = $common; $index < count($test->suitePathIdentities); ++$index) {
+            $heading = $test->pathSegments[$index] ?? '';
+            $output->writeln(str_repeat('  ', $index + 1) . $this->terminalSafe($heading));
+        }
+        $depth = count($test->suitePathIdentities) + 1;
+        $leaf = $test->pathSegments === []
+            ? $test->displayName
+            : $test->pathSegments[count($test->pathSegments) - 1];
+        $status = $result->category->passed()
+            ? 'PASS'
+            : 'FAIL';
+        $category = $result->category->passed() ? '' : " [{$result->category->value}]";
+        $output->writeln(
+            str_repeat('  ', $depth)
+                . $status
+                . ' '
+                . $this->terminalSafe($leaf)
+                . $category,
+        );
+    }
+
+    private function renderFailure(
+        OutputInterface $output,
+        ExecutableTest $test,
+        TestExecutionResult $result,
+    ): void {
+        $indent = str_repeat('  ', count($test->suitePathIdentities) + 2);
+        $outcome = $result->outcome;
+        $output->writeln('');
+        if ($result->category === TestOutcomeCategory::AssertionFailed && $outcome !== null) {
+            $matcher = $outcome->matcherSourceName() ?? $outcome->matcher ?? 'unknown';
+            $output->writeln($indent . 'Matcher: ' . ($outcome->negated ? 'not->' : '') . $matcher);
+            if ($outcome->userMessage !== null) {
+                $output->writeln($indent . 'Message: ' . $this->terminalSafe($outcome->userMessage));
+            }
+            if ($outcome->expected !== null) {
+                $output->writeln(
+                    $indent . 'Expected: ' . $this->terminalSafe($outcome->expected['presentation']),
+                );
+            }
+            if ($outcome->actual !== null) {
+                $output->writeln(
+                    $indent . 'Actual: ' . $this->terminalSafe($outcome->actual['presentation']),
+                );
+            }
+            if ($outcome->difference !== null) {
+                $output->writeln($indent . 'Difference: ' . $this->terminalSafe($outcome->difference));
+            }
+            $this->renderOrigin($output, $indent, $outcome);
+        } elseif ($result->category === TestOutcomeCategory::UnexpectedCheckedError && $outcome !== null) {
+            $output->writeln($indent . 'Error: ' . $this->terminalSafe($outcome->errorType ?? 'Error'));
+            $output->writeln($indent . 'Message: ' . $this->terminalSafe($outcome->message ?? ''));
+            $this->renderOrigin($output, $indent, $outcome);
+        } elseif ($result->category === TestOutcomeCategory::FatalPanic && $outcome !== null) {
+            $output->writeln($indent . 'Panic: ' . $this->terminalSafe($outcome->diagnosticCode ?? 'unknown'));
+            if ($outcome->message !== null && $outcome->message !== '') {
+                $output->writeln($indent . 'Message: ' . $this->terminalSafe($outcome->message));
+            }
+            foreach ($outcome->facts as $fact) {
+                $value = is_bool($fact['value']) ? ($fact['value'] ? 'true' : 'false') : (string) $fact['value'];
+                $output->writeln(
+                    $indent
+                        . $this->terminalSafe($fact['name'])
+                        . ': '
+                        . $this->terminalSafe($value),
+                );
+            }
+            $this->renderOrigin($output, $indent, $outcome);
+        } else {
+            $output->writeln(
+                $indent . $this->terminalSafe($result->infrastructureDetail ?? 'Test process failed.'),
+            );
+        }
+        $output->writeln('');
+    }
+
+    private function renderOrigin(OutputInterface $output, string $indent, RuntimeOutcome $outcome): void
+    {
+        if ($outcome->origin === null) {
+            return;
+        }
+        $location = $outcome->origin['path']
+            . ':'
+            . $outcome->origin['line']
+            . ':'
+            . $outcome->origin['column'];
+        $output->writeln($indent . 'At: ' . $this->terminalSafe($location));
+        if ($outcome->origin['function'] !== null
+            && $outcome->origin['function'] !== ''
+            && !$this->generatedCallable($outcome->origin['function'])
+        ) {
+            $output->writeln(
+                $indent . 'Function: ' . $this->terminalSafe($outcome->origin['function']),
+            );
+        }
+    }
+
+    private function generatedCallable(string $function): bool
+    {
+        $separator = strrpos($function, '\\');
+        $leaf = $separator === false ? $function : substr($function, $separator + 1);
+
+        return str_starts_with($leaf, '__doria_test_');
+    }
+
+    private function renderOutput(OutputInterface $output, TestExecutionResult $result): void
+    {
+        $output->writeln('--- stdout ---');
+        if ($result->process->stdout !== '') {
+            $stdout = $this->terminalSafe($result->process->stdout, true);
+            $output->write($stdout);
+            if (!str_ends_with($stdout, "\n")) {
+                $output->writeln('');
+            }
+        }
+        $output->writeln('--- stderr ---');
+        if ($result->process->stderr !== '') {
+            $stderr = $this->terminalSafe($result->process->stderr, true);
+            $output->write($stderr);
+            if (!str_ends_with($stderr, "\n")) {
+                $output->writeln('');
+            }
+        }
+        $termination = $result->process->signaled
+            ? 'signal ' . ($result->process->signal ?? 'unknown')
+            : 'exit ' . ($result->process->exitCode ?? 'unknown');
+        $output->writeln("--- {$termination} ---");
+    }
+
+    private function terminalSafe(string $value, bool $preserveNewlines = false): string
+    {
+        $safe = '';
+        $length = strlen($value);
+        for ($index = 0; $index < $length; ++$index) {
+            $byte = ord($value[$index]);
+            if ($byte === 10 && $preserveNewlines) {
+                $safe .= "\n";
+            } elseif ($byte < 32 || $byte === 127) {
+                $safe .= sprintf('\\u%04x', $byte);
+            } else {
+                $safe .= $value[$index];
+            }
+        }
+
+        return $safe;
     }
 
     /**
-     * @param array{exitCode: int, stdout: string, stderr: string} $result
+     * @return array{
+     *   selected: int,
+     *   passed: int,
+     *   assertionFailed: int,
+     *   unexpectedCheckedError: int,
+     *   fatalPanic: int,
+     *   abnormalProcessFailure: int
+     * }
      */
-    private function renderOutput(OutputInterface $output, ExecutableTest $test, array $result): void
+    private function counts(int $selected): array
     {
-        $output->writeln("--- {$test->displayName} stdout ---");
-        if ($result['stdout'] !== '') {
-            $output->write($result['stdout']);
-            if (!str_ends_with($result['stdout'], "\n")) {
-                $output->writeln('');
-            }
-        }
-        $output->writeln("--- {$test->displayName} stderr ---");
-        if ($result['stderr'] !== '') {
-            $output->write($result['stderr']);
-            if (!str_ends_with($result['stderr'], "\n")) {
-                $output->writeln('');
-            }
-        }
-        $output->writeln("--- exit {$result['exitCode']} ---");
+        return [
+            'selected' => $selected,
+            'passed' => 0,
+            'assertionFailed' => 0,
+            'unexpectedCheckedError' => 0,
+            'fatalPanic' => 0,
+            'abnormalProcessFailure' => 0,
+        ];
+    }
+
+    /**
+     * @return 'passed'|'assertionFailed'|'unexpectedCheckedError'|'fatalPanic'|'abnormalProcessFailure'
+     */
+    private function countKey(TestOutcomeCategory $category): string
+    {
+        return match ($category) {
+            TestOutcomeCategory::Passed => 'passed',
+            TestOutcomeCategory::AssertionFailed => 'assertionFailed',
+            TestOutcomeCategory::UnexpectedCheckedError => 'unexpectedCheckedError',
+            TestOutcomeCategory::FatalPanic => 'fatalPanic',
+            TestOutcomeCategory::AbnormalProcessFailure => 'abnormalProcessFailure',
+        };
     }
 
     /** @return array<string, mixed> */
@@ -468,6 +658,7 @@ final class TestPackageRunner
             'callableCanonicalName' => $test->callableCanonicalName,
             'source' => $test->source,
             'byteStart' => $test->location->byteStart,
+            'authoredOrdinal' => $test->authoredOrdinal,
         ];
     }
 

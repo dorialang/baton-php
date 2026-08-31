@@ -35,6 +35,8 @@ final class DoctorCommandTest extends TestCase
         self::assertStringContainsString('PASS  doriac path', $result['stdout']);
         self::assertStringContainsString($compiler, $result['stdout']);
         self::assertStringContainsString('PASS  doriac version', $result['stdout']);
+        self::assertStringContainsString('PASS  native compiler', $result['stdout']);
+        self::assertStringContainsString('runtime archive and linker verified', $result['stdout']);
         self::assertStringContainsString('WARNING  toolchain manifest', $result['stdout']);
         self::assertStringContainsString('WARNING  component hashes', $result['stdout']);
         self::assertStringContainsString('WARNING  doria-lsp', $result['stdout']);
@@ -99,12 +101,36 @@ TOML,
         self::assertStringContainsString('dependency cache', $result['stdout']);
     }
 
-    private function writeFakeCompiler(string $root): string
+    public function testDoctorFailsWhenTheCompilerCannotLinkANativeProgram(): void
+    {
+        $root = $this->temporaryDirectory('doctor missing native runtime');
+        $compiler = $this->writeFakeCompiler($root, nativeFailure: true);
+
+        $result = $this->runBaton(
+            ['doctor', '--compiler', $compiler],
+            $root,
+            environment: $this->cacheEnvironment($root),
+        );
+
+        self::assertSame(1, $result['exitCode'], $result['stdout']);
+        self::assertSame('', $result['stderr']);
+        self::assertStringContainsString('PASS  doriac version', $result['stdout']);
+        self::assertStringContainsString('FAIL  native compiler', $result['stdout']);
+        self::assertStringContainsString(
+            '[B0001] Backend Error: Doria runtime archive not found',
+            $result['stdout'],
+        );
+    }
+
+    private function writeFakeCompiler(string $root, bool $nativeFailure = false): string
     {
         $script = $root . '/toolchain/doriac.php';
         $this->writeExecutable(
             $script,
-            str_replace('__TARGET__', Platform::host()->target(), <<<'PHP'
+            str_replace(
+                ['__TARGET__', '__NATIVE_FAILURE__'],
+                [Platform::host()->target(), $nativeFailure ? 'true' : 'false'],
+                <<<'PHP'
 #!/usr/bin/env php
 <?php
 
@@ -119,8 +145,36 @@ if (($argv[1] ?? '') === '--version' && ($argv[2] ?? '') === '--json') {
     exit(0);
 }
 
+if (($argv[1] ?? '') === 'compile') {
+    if (__NATIVE_FAILURE__) {
+        echo json_encode([
+            'schemaVersion' => 1,
+            'diagnostics' => [[
+                'code' => 'B0001',
+                'title' => 'Backend Error',
+                'message' => 'Doria runtime archive not found',
+            ]],
+            'summary' => [
+                'status' => 'Compilation Failed',
+                'errors' => 1,
+                'warnings' => 0,
+                'notes' => 0,
+            ],
+        ]) . "\n";
+        exit(1);
+    }
+    $out = array_search('--out', $argv, true);
+    if (!is_int($out) || !is_string($argv[$out + 1] ?? null)) {
+        exit(2);
+    }
+    file_put_contents($argv[$out + 1], 'native fixture');
+    chmod($argv[$out + 1], 0755);
+    exit(0);
+}
+
 exit(2);
-PHP),
+PHP,
+            ),
         );
         if (PHP_OS_FAMILY !== 'Windows') {
             return $script;

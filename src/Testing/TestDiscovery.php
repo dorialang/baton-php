@@ -76,24 +76,44 @@ final class TestDiscovery
                 $test->authoredSpelling,
                 $test->suite,
                 $test->pathSegments,
+                $this->suitePathIdentities($suite, $suites, $test),
                 $test->source,
+                $test->authoredOrdinal,
                 $callable->requiredEffects,
                 $callable->ambientEffects,
                 $test->location,
             );
         }
-        usort($tests, static fn (ExecutableTest $left, ExecutableTest $right): int => [
-            $left->displayName,
-            $left->source,
-            $left->location->byteStart,
-            $left->identity,
-        ] <=> [
-            $right->displayName,
-            $right->source,
-            $right->location->byteStart,
-            $right->identity,
-        ]);
         return $tests;
+    }
+
+    /**
+     * @param array<string, MetadataTestSuite> $suites
+     * @return list<string>
+     */
+    private function suitePathIdentities(
+        ?MetadataTestSuite $suite,
+        array $suites,
+        MetadataTest $test,
+    ): array {
+        $path = [];
+        $seen = [];
+        while ($suite instanceof MetadataTestSuite) {
+            if (isset($seen[$suite->identity])) {
+                throw $this->invalid('Test Metadata Is Invalid', 'A test suite hierarchy is cyclic.', $test);
+            }
+            $seen[$suite->identity] = true;
+            $path[] = $suite->identity;
+            if ($suite->parentSuite === null) {
+                break;
+            }
+            $suite = $suites[$suite->parentSuite] ?? null;
+            if (!$suite instanceof MetadataTestSuite) {
+                throw $this->invalid('Test Metadata Is Invalid', 'A parent test suite is missing.', $test);
+            }
+        }
+
+        return array_reverse($path);
     }
 
     private function shapeProblem(?string $issue): string
