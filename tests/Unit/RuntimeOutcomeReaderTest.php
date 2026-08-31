@@ -41,34 +41,16 @@ final class RuntimeOutcomeReaderTest extends TestCase
         self::assertSame(['type' => 'int', 'presentation' => '3'], $assertion->expected);
     }
 
-    public function testAcceptsTheCompleteStrictAssertionMatcherVocabulary(): void
+    public function testPreservesCompilerOwnedDiagnosticsMatchersAndFacts(): void
     {
         $reader = new RuntimeOutcomeReader();
-        $matchers = [
-            'Equal', 'Null', 'True', 'False', 'GreaterThan', 'GreaterThanOrEqual',
-            'LessThan', 'LessThanOrEqual', 'StringContains', 'StringStartsWith',
-            'StringEndsWith', 'StringEmpty', 'CollectionContains', 'CollectionEmpty',
-            'CollectionCount', 'DictionaryHasKey', 'DictionaryHasValue', 'Throws',
-        ];
-        foreach ($matchers as $matcher) {
-            $actual = ['int', '2'];
-            $expected = ['int', '3'];
-            if ($matcher === 'Null') {
-                $expected = ['null', 'null'];
-            } elseif ($matcher === 'True') {
-                $expected = ['bool', 'true'];
-            } elseif ($matcher === 'False') {
-                $expected = ['bool', 'false'];
-            } elseif ($matcher === 'StringEmpty') {
-                $expected = ['string', '""'];
-            }
-            self::assertSame($matcher, $reader->decode(
-                $this->assertionRecord($matcher, $actual, $expected),
-            )->matcher);
-        }
-        self::assertSame('Fail', $reader->decode(
-            $this->assertionRecord('Fail', null, null, userMessage: 'stop'),
-        )->matcher);
+        $panic = $reader->decode($this->panicRecord('P9999', [['futureFact', 4, 'value']]));
+        self::assertSame('P9999', $panic->diagnosticCode);
+        self::assertSame([['name' => 'futureFact', 'value' => 'value']], $panic->facts);
+
+        $assertion = $reader->decode($this->assertionRecord('FutureMatcher'));
+        self::assertSame('FutureMatcher', $assertion->matcher);
+        self::assertSame('FutureMatcher', $assertion->matcherSourceName());
     }
 
     public function testRejectsMalformedUnsupportedAndOversizedRecords(): void
@@ -79,14 +61,12 @@ final class RuntimeOutcomeReaderTest extends TestCase
             'unknown version' => substr_replace($this->errorRecord(), pack('v', 9), 8, 2),
             'truncated' => substr($this->assertionRecord(), 0, -1),
             'invalid flag' => substr_replace($this->assertionRecord(), "\x02", 23, 1),
-            'unknown matcher' => $this->assertionRecord('FutureMatcher'),
+            'empty matcher' => $this->assertionRecord(''),
+            'empty panic code' => $this->panicRecord(''),
             'trailing bytes' => $this->panicRecord() . 'x',
             'invalid UTF-8' => $this->assertionRecord(actual: ['string', "\xff"]),
             'assertion Error in V3' => $this->errorRecord('Doria\\Std\\Test\\AssertionError'),
-            'wrong fact order' => $this->panicRecord('P1301', [
-                ['length', 2, 2],
-                ['index', 2, 1],
-            ]),
+            'empty fact name' => $this->panicRecord('P9999', [['', 4, 'value']]),
         ];
         foreach ($cases as $name => $bytes) {
             try {

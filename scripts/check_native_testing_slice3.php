@@ -27,14 +27,28 @@ $require('src/Testing/RuntimeOutcomeReader.php', [
     'DORIAO2',
     'DORIAO3',
     'DORIAO4',
-    "'CollectionContains'",
-    "'CollectionEmpty'",
-    "'CollectionCount'",
-    "'DictionaryHasKey'",
-    "'DictionaryHasValue'",
-    "'Throws'",
+    'Runtime panic has an empty diagnostic code.',
+    'Runtime panic has an empty fact name.',
+    'Runtime assertion has an empty matcher.',
     'Runtime outcome has unknown magic.',
     'Runtime outcome contains trailing bytes.',
+]);
+$reader = $read('src/Testing/RuntimeOutcomeReader.php');
+foreach ([
+    'private const MATCHERS',
+    'private const PANIC_FACTS',
+    'unknown matcher',
+    'unknown diagnostic code',
+    'diagnostic catalogue',
+] as $duplicatedCompilerAuthority) {
+    if (str_contains($reader, $duplicatedCompilerAuthority)) {
+        $failures[] = "src/Testing/RuntimeOutcomeReader.php: duplicates compiler authority `{$duplicatedCompilerAuthority}`";
+    }
+}
+$require('tests/Unit/RuntimeOutcomeReaderTest.php', [
+    "panicRecord('P9999'",
+    "assertionRecord('FutureMatcher')",
+    "assertSame('FutureMatcher', \$assertion->matcherSourceName())",
 ]);
 $require('src/Testing/RuntimeOutcomeChannel.php', [
     "'outcomes'",

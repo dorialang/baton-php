@@ -59,7 +59,7 @@ final readonly class RuntimeOutcome
             'DictionaryHasValue' => 'toHaveValue',
             'Throws' => 'toThrow',
             'Fail' => 'fail',
-            default => null,
+            default => $this->matcher,
         };
     }
 }

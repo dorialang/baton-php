@@ -10,81 +10,6 @@ final class RuntimeOutcomeReader
 
     private const ASSERTION_ERROR = 'Doria\\Std\\Test\\AssertionError';
 
-    /** @var list<string> */
-    private const MATCHERS = [
-        'Equal',
-        'Null',
-        'True',
-        'False',
-        'GreaterThan',
-        'GreaterThanOrEqual',
-        'LessThan',
-        'LessThanOrEqual',
-        'StringContains',
-        'StringStartsWith',
-        'StringEndsWith',
-        'StringEmpty',
-        'CollectionContains',
-        'CollectionEmpty',
-        'CollectionCount',
-        'DictionaryHasKey',
-        'DictionaryHasValue',
-        'Throws',
-        'Fail',
-    ];
-
-    /** @var array<string, list<string>> */
-    private const PANIC_FACTS = [
-        'P1000' => [],
-        'P1001' => [],
-        'P1101' => [],
-        'P1102' => [],
-        'P1103' => [],
-        'P1104' => [],
-        'P1105' => [],
-        'P1106' => [],
-        'P1107' => [],
-        'P1108' => [],
-        'P1109' => [],
-        'P1110' => [],
-        'P1111' => ['status'],
-        'P1201' => ['length'],
-        'P1202' => ['requestedLength'],
-        'P1203' => [
-            'operation',
-            'value',
-            'currentGraphemeLength',
-            'requestedGraphemeLength',
-            'paddingGraphemeLength',
-        ],
-        'P1204' => ['count'],
-        'P1205' => [],
-        'P1206' => [],
-        'P1301' => ['index', 'length'],
-        'P1302' => [],
-        'P1310' => ['index', 'length'],
-        'P1311' => ['count'],
-        'P1312' => [],
-        'P1313' => [],
-        'P1320' => [],
-        'P1321' => [],
-        'P1322' => [],
-        'P1401' => [],
-        'P1402' => [],
-        'P1403' => [],
-        'P1404' => [],
-        'P1405' => [],
-        'P1406' => [],
-        'P1407' => [],
-        'P1410' => [],
-        'P1501' => ['conflictReason'],
-        'P1502' => [],
-        'P1503' => [],
-        'P1504' => [],
-        'P1505' => [],
-        'P1601' => [],
-    ];
-
     public function read(string $path): RuntimeOutcome
     {
         $handle = @fopen($path, 'rb');
@@ -150,9 +75,8 @@ final class RuntimeOutcomeReader
         $path = $cursor->text($pathLength);
         $source = $cursor->text($sourceLength);
         $function = $cursor->text($functionLength);
-        $expectedFacts = self::PANIC_FACTS[$code] ?? null;
-        if ($expectedFacts === null) {
-            throw new RuntimeOutcomeInvalid('Runtime panic uses an unknown diagnostic code.');
+        if ($code === '') {
+            throw new RuntimeOutcomeInvalid('Runtime panic has an empty diagnostic code.');
         }
         $facts = [];
         for ($index = 0; $index < $factCount; ++$index) {
@@ -163,6 +87,9 @@ final class RuntimeOutcomeReader
             $this->bounded($nameLength, 1024, 'panic fact name');
             $this->bounded($valueLength, 65_536, 'panic fact value');
             $name = $cursor->text($nameLength);
+            if ($name === '') {
+                throw new RuntimeOutcomeInvalid('Runtime panic has an empty fact name.');
+            }
             $value = match ($kind) {
                 1 => $valueLength === 0
                     ? RuntimeOutcomeCursor::signed64($rawValue)
@@ -178,10 +105,6 @@ final class RuntimeOutcomeReader
             };
             $facts[] = ['name' => $name, 'value' => $value];
         }
-        if (array_column($facts, 'name') !== $expectedFacts) {
-            throw new RuntimeOutcomeInvalid('Runtime panic facts do not match the diagnostic catalogue.');
-        }
-        $this->validatePanicFactValues($code, $facts);
         $frames = $this->frames($cursor, $frameCount);
         $cursor->finish();
 
@@ -306,30 +229,8 @@ final class RuntimeOutcomeReader
         if ($errorType !== self::ASSERTION_ERROR) {
             throw new RuntimeOutcomeInvalid('Runtime assertion has an invalid Error identity.');
         }
-        if (!in_array($matcher, self::MATCHERS, true)) {
-            throw new RuntimeOutcomeInvalid('Runtime assertion has an unknown matcher.');
-        }
-        if ($matcher === 'Fail'
-            && ($negated || $actualPresent || $expectedPresent || !$userMessagePresent)
-        ) {
-            throw new RuntimeOutcomeInvalid('Explicit assertion failure has malformed facts.');
-        }
-        if ($matcher !== 'Fail' && !$actualPresent) {
-            throw new RuntimeOutcomeInvalid('Runtime assertion has no actual value.');
-        }
-        foreach ([
-            'Null' => ['null', 'null'],
-            'True' => ['bool', 'true'],
-            'False' => ['bool', 'false'],
-            'StringEmpty' => ['string', '""'],
-        ] as $fixedMatcher => [$fixedType, $fixedPresentation]) {
-            if ($matcher === $fixedMatcher
-                && (!$expectedPresent
-                    || $expectedType !== $fixedType
-                    || $expectedPresentation !== $fixedPresentation)
-            ) {
-                throw new RuntimeOutcomeInvalid('Runtime assertion has malformed fixed expectation facts.');
-            }
+        if ($matcher === '') {
+            throw new RuntimeOutcomeInvalid('Runtime assertion has an empty matcher.');
         }
         $origin = $this->optionalOrigin(
             $cursor,
@@ -389,28 +290,6 @@ final class RuntimeOutcomeReader
         }
 
         return false;
-    }
-
-    /**
-     * @param list<array{name: string, value: int|bool|string}> $facts
-     */
-    private function validatePanicFactValues(string $code, array $facts): void
-    {
-        if ($code === 'P1501') {
-            $allowed = [
-                'Cannot Acquire Writable Access While Readonly Access Is Active',
-                'Cannot Acquire Readonly Access While Writable Access Is Active',
-                'Cannot Acquire Writable Access While Writable Access Is Active',
-            ];
-            if (!isset($facts[0]) || !in_array($facts[0]['value'], $allowed, true)) {
-                throw new RuntimeOutcomeInvalid('Runtime panic has an invalid shared-access conflict reason.');
-            }
-        }
-        if ($code === 'P1203'
-            && (!isset($facts[0]) || !in_array($facts[0]['value'], ['padStart', 'padEnd'], true))
-        ) {
-            throw new RuntimeOutcomeInvalid('Runtime panic has an invalid string-padding operation.');
-        }
     }
 
     /** @return list<array{path: string, byteStart: int, byteEnd: int, function: string}> */
