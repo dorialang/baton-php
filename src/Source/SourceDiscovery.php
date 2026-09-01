@@ -56,9 +56,14 @@ final class SourceDiscovery
         Schema2Manifest $manifest,
         array $generatedSources = [],
     ): SourceInventory {
+        $entries = [];
+        foreach ($manifest->targets->binaries as $binary) {
+            $entries[$this->normalize($binary->entryPath)] = $binary->entryPath;
+        }
+
         return $this->discoverSources(
             $manifest,
-            array_map(static fn ($binary): string => $binary->entryPath, $manifest->targets->binaries),
+            array_values($entries),
             $generatedSources,
         );
     }

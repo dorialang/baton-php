@@ -85,6 +85,44 @@ final class SourceDiscoveryTest extends TestCase
         );
     }
 
+    public function testToolingDiscoveryRegistersASharedBinaryEntryOnce(): void
+    {
+        $root = $this->project();
+        $this->write($root, 'src/Domain/Shared.doria');
+        $this->write($root, 'src/web.doria');
+        $this->write($root, 'src/worker.doria');
+        self::assertNotFalse(file_put_contents($root . '/Baton.toml', <<<'TOML'
+manifest-version = 2
+
+[package]
+name = "acme/blog"
+version = "1.0.0"
+edition = "2026"
+
+[[targets.binary]]
+name = "web"
+entry = "src/web.doria"
+
+[[targets.binary]]
+name = "worker"
+entry = "src/web.doria"
+
+[autoload.namespaces]
+"Acme\\Blog\\" = "src/"
+TOML));
+
+        $inventory = (new SourceDiscovery($root))->discoverForTooling($this->manifest($root));
+
+        self::assertSame(
+            ['src/Domain/Shared.doria', 'src/web.doria', 'src/worker.doria'],
+            array_map(static fn ($source): string => $source->relativePath, $inventory->sources),
+        );
+        self::assertSame(
+            ['autoload', 'entry', 'autoload'],
+            array_map(static fn ($source): string => $source->origin, $inventory->sources),
+        );
+    }
+
     public function testDuplicateCanonicalSourceAndScopeConflictAreRejected(): void
     {
         $root = $this->temporaryDirectory('duplicate source');
