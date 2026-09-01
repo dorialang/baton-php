@@ -39,7 +39,7 @@ final class ProjectDocumentBuilder
         [$rootPackage, $resolvedGraph] = $this->ensureRootPackage($rootMember, $resolvedGraph, $selected);
         $visible = $this->visiblePackages($rootPackage, $resolvedGraph, $development, $selection->aggregate);
         $registry = $this->generatedRegistry($selection, $visible, $resolvedGraph->packages);
-        [$rootPackage, $resolvedGraph, $visible] = $this->withGeneratedSources(
+        [$rootPackage, $resolvedGraph, $visible] = $this->withToolingSources(
             $rootPackage,
             $resolvedGraph,
             $visible,
@@ -179,7 +179,7 @@ final class ProjectDocumentBuilder
             $root->manifest,
             new ResolvedPackageSource('workspace', $root->root, $root->relativePath),
             (new ManifestFingerprint())->calculate($root->manifest),
-            (new SourceDiscovery($root->root))->discover($root->manifest, $selected),
+            (new SourceDiscovery($root->root))->discoverForTooling($root->manifest),
         );
         $packages = $graph->packages;
         $packages[$root->manifest->package->name] = $package;
@@ -234,7 +234,7 @@ final class ProjectDocumentBuilder
      * @param array<string, list<GeneratedSourceInput>> $generated
      * @return array{ResolvedPackage, ResolvedDependencyGraph|ResolvedWorkspaceGraph, array<string, ResolvedPackage>}
      */
-    private function withGeneratedSources(
+    private function withToolingSources(
         ResolvedPackage $root,
         ResolvedDependencyGraph|ResolvedWorkspaceGraph $graph,
         array $visible,
@@ -243,15 +243,9 @@ final class ProjectDocumentBuilder
         bool $development,
         bool $aggregate,
     ): array {
-        if ($generated === []) {
-            return [$root, $graph, $visible];
-        }
         $packages = $graph->packages;
         foreach ($visible as $name => $package) {
             $inputs = $generated[$name] ?? [];
-            if ($inputs === []) {
-                continue;
-            }
             $target = $name === $root->manifest->package->name
                 ? $rootTarget
                 : new SelectedPackageTarget(
@@ -259,9 +253,8 @@ final class ProjectDocumentBuilder
                         ?? ($package->manifest->targets->binaries[0]
                             ?? throw new \LogicException('A source-visible package must declare a target.')),
                 );
-            $inventory = (new SourceDiscovery($package->source->root))->discover(
+            $inventory = (new SourceDiscovery($package->source->root))->discoverForTooling(
                 $package->manifest,
-                $target,
                 $inputs,
             );
             $replacement = $package->withInventory($target, $inventory, true);

@@ -15,6 +15,11 @@ fingerprints. It may contain canonical local roots needed to read sources, but
 never source bodies, credentials, environment values, processor logs, or cache
 implementation keys.
 
+Tooling inventories include every declared binary entry in addition to the
+autoloaded and generated package surface. Build and run inventories remain
+target-specific; this broader source set exists so editor analysis can resolve
+symbols across entry files and reusable declarations.
+
 Packages without dependencies do not require `Baton.lock`. Their lock fingerprint
 is the SHA-256 digest of JSON `null`, so creating or removing a lock invalidates the
 project snapshot without making lockless packages invalid.
