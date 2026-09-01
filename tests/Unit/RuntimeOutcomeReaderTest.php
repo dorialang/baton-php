@@ -53,6 +53,22 @@ final class RuntimeOutcomeReaderTest extends TestCase
         self::assertSame('FutureMatcher', $assertion->matcherSourceName());
     }
 
+    public function testDecodesHostIntegerBoundariesPortably(): void
+    {
+        $outcome = (new RuntimeOutcomeReader())->decode($this->panicRecord(
+            'P1112',
+            [
+                ['minimum', 1, PHP_INT_MIN],
+                ['maximum', 2, PHP_INT_MAX],
+            ],
+        ));
+
+        self::assertSame([
+            ['name' => 'minimum', 'value' => PHP_INT_MIN],
+            ['name' => 'maximum', 'value' => PHP_INT_MAX],
+        ], $outcome->facts);
+    }
+
     public function testRejectsMalformedUnsupportedAndOversizedRecords(): void
     {
         $reader = new RuntimeOutcomeReader();
@@ -102,8 +118,8 @@ final class RuntimeOutcomeReaderTest extends TestCase
             . pack('v', strlen($function))
             . pack('v', 0)
             . pack('v', count($facts))
-            . pack('P', 0)
-            . pack('P', 5)
+            . $this->i64(0)
+            . $this->i64(5)
             . $code
             . $message
             . $path
@@ -114,7 +130,7 @@ final class RuntimeOutcomeReaderTest extends TestCase
             $scalar = $kind === 3 ? (int) (bool) $value : (is_int($value) ? $value : 0);
             $bytes .= pack('v', strlen($name))
                 . chr($kind)
-                . pack('P', $scalar)
+                . $this->i64($scalar)
                 . pack('V', strlen($text))
                 . $name
                 . $text;
@@ -134,13 +150,13 @@ final class RuntimeOutcomeReaderTest extends TestCase
         return "DORIAO3\0"
             . pack('v', 3)
             . pack('V', strlen($errorType))
-            . pack('P', strlen($message))
+            . $this->i64(strlen($message))
             . pack('V', strlen($path))
             . pack('V', strlen($source))
             . pack('V', strlen($function))
             . "\x01"
-            . pack('P', 0)
-            . pack('P', 5)
+            . $this->i64(0)
+            . $this->i64(5)
             . $errorType
             . $message
             . $path
@@ -188,8 +204,8 @@ final class RuntimeOutcomeReaderTest extends TestCase
             . pack('V', strlen($source))
             . pack('V', strlen($function))
             . "\x01"
-            . pack('P', 0)
-            . pack('P', 6)
+            . $this->i64(0)
+            . $this->i64(6)
             . pack('v', 0)
             . $errorType
             . $matcher
@@ -202,6 +218,17 @@ final class RuntimeOutcomeReaderTest extends TestCase
             . $path
             . $source
             . $function;
+
+        return $bytes;
+    }
+
+    private function i64(int $value): string
+    {
+        $bytes = '';
+        for ($index = 0; $index < 8; ++$index) {
+            $bytes .= chr($value & 0xff);
+            $value >>= 8;
+        }
 
         return $bytes;
     }

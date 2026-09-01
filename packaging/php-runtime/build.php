@@ -266,7 +266,7 @@ function hostTarget(): string
         'Windows' => 'windows',
         default => fail('Unsupported build host: ' . PHP_OS_FAMILY, EXIT_USAGE),
     };
-    $machine = strtolower(php_uname('m'));
+    $machine = strtolower(hostMachine());
     $architecture = match ($machine) {
         'x86_64', 'amd64' => 'x86_64',
         'aarch64', 'arm64' => 'aarch64',
@@ -278,6 +278,20 @@ function hostTarget(): string
     }
 
     return "{$platform}-{$architecture}";
+}
+
+function hostMachine(): string
+{
+    if (PHP_OS_FAMILY === 'Windows') {
+        foreach (['PROCESSOR_ARCHITEW6432', 'PROCESSOR_ARCHITECTURE'] as $name) {
+            $value = getenv($name);
+            if (is_string($value) && $value !== '') {
+                return $value;
+            }
+        }
+    }
+
+    return php_uname('m');
 }
 
 function absolutePath(string $path, string $base): string

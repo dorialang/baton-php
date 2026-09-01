@@ -15,10 +15,17 @@ final readonly class Platform
     ) {
     }
 
-    public static function host(?string $osFamily = null, ?string $machine = null): self
+    /**
+     * @param array<string, string>|null $environment
+     */
+    public static function host(
+        ?string $osFamily = null,
+        ?string $machine = null,
+        ?array $environment = null,
+    ): self
     {
         $osFamily ??= PHP_OS_FAMILY;
-        $machine ??= php_uname('m');
+        $machine ??= self::hostMachine($osFamily, $environment);
 
         $name = match (strtolower($osFamily)) {
             'windows' => 'windows',
@@ -46,6 +53,29 @@ final readonly class Platform
         };
 
         return new self($name, $architecture);
+    }
+
+    /**
+     * A 32-bit PHP process reports i586 on 64-bit Windows. In that case,
+     * PROCESSOR_ARCHITEW6432 identifies the native host architecture.
+     *
+     * @param array<string, string>|null $environment
+     */
+    private static function hostMachine(string $osFamily, ?array $environment): string
+    {
+        if (strtolower($osFamily) === 'windows') {
+            foreach (['PROCESSOR_ARCHITEW6432', 'PROCESSOR_ARCHITECTURE'] as $name) {
+                $value = $environment === null
+                    ? getenv($name)
+                    : ($environment[$name] ?? false);
+
+                if (is_string($value) && $value !== '') {
+                    return $value;
+                }
+            }
+        }
+
+        return php_uname('m');
     }
 
     public function target(): string
