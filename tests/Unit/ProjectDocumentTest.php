@@ -71,6 +71,55 @@ TOML);
         );
     }
 
+    public function testProjectDocumentIncludesBinaryEntriesInTheToolingGraph(): void
+    {
+        $root = $this->temporaryDirectory('binary project document');
+        $this->write($root . '/src/Core/Application.doria', "namespace Acme\\Core;\nclass Application {}\n");
+        $this->write(
+            $root . '/src/main.doria',
+            "namespace Acme;\nuse Acme\\Core\\Application;\nfunction main(): void { new Application(); }\n",
+        );
+        $this->write($root . '/Baton.toml', <<<'TOML'
+manifest-version = 2
+[package]
+name = "acme/app"
+version = "1.0.0"
+edition = "2026"
+kind = "binary"
+entry = "src/main.doria"
+[autoload.namespaces]
+"Acme\\" = "src/"
+TOML);
+        $manifest = (new ManifestLoader())->load($root);
+        self::assertInstanceOf(Schema2Manifest::class, $manifest);
+
+        $document = (new ProjectDocumentBuilder())->build(
+            new ProjectSelection($root, $root, $manifest, null, false),
+            true,
+            NetworkPolicy::Offline,
+        );
+
+        $packages = $document['packages'];
+        self::assertIsArray($packages);
+        $package = $packages[0];
+        self::assertIsArray($package);
+        $packageSources = $package['sources'];
+        self::assertIsArray($packageSources);
+
+        $plan = $document['toolingBuildPlan'];
+        self::assertIsArray($plan);
+        $planPackages = $plan['packages'];
+        self::assertIsArray($planPackages);
+        $planPackage = $planPackages[0];
+        self::assertIsArray($planPackage);
+        $planSources = $planPackage['sources'];
+        self::assertIsArray($planSources);
+
+        $expected = ['acme/app:src/Core/Application.doria', 'acme/app:src/main.doria'];
+        self::assertSame($expected, array_column($packageSources, 'identity'));
+        self::assertSame($expected, array_column($planSources, 'identity'));
+    }
+
     public function testProjectDocumentUsesTheCompilerVisibleGraphAndGeneratedInventory(): void
     {
         $workspace = $this->temporaryDirectory('project document');

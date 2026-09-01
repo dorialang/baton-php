@@ -34,6 +34,49 @@ final class SourceDiscovery
         SelectedPackageTarget $selected,
         array $generatedSources = [],
     ): SourceInventory {
+        $entries = [];
+        if ($selected->isBinary()) {
+            $entry = $selected->entry();
+            if ($entry === null) {
+                throw $this->error('Binary Target Entry Is Missing', '', 'The selected binary has no entry source.');
+            }
+            $entries[] = $entry;
+        }
+
+        return $this->discoverSources($manifest, $entries, $generatedSources);
+    }
+
+    /**
+     * Returns the complete package surface needed by language tooling rather than
+     * the source set of one executable target.
+     *
+     * @param list<GeneratedSourceInput> $generatedSources
+     */
+    public function discoverForTooling(
+        Schema2Manifest $manifest,
+        array $generatedSources = [],
+    ): SourceInventory {
+        $entries = [];
+        foreach ($manifest->targets->binaries as $binary) {
+            $entries[$this->normalize($binary->entryPath)] = $binary->entryPath;
+        }
+
+        return $this->discoverSources(
+            $manifest,
+            array_values($entries),
+            $generatedSources,
+        );
+    }
+
+    /**
+     * @param list<string>               $includedEntries
+     * @param list<GeneratedSourceInput> $generatedSources
+     */
+    private function discoverSources(
+        Schema2Manifest $manifest,
+        array $includedEntries,
+        array $generatedSources,
+    ): SourceInventory {
         $entryPaths = [];
         foreach ($manifest->targets->binaries as $binary) {
             $entryPaths[$this->normalize($binary->entryPath)] = true;
@@ -70,11 +113,7 @@ final class SourceDiscovery
             }
         }
 
-        if ($selected->isBinary()) {
-            $entry = $selected->entry();
-            if ($entry === null) {
-                throw $this->error('Binary Target Entry Is Missing', '', 'The selected binary has no entry source.');
-            }
+        foreach ($includedEntries as $entry) {
             $resolved = $this->paths->file($entry);
             $contents = @file_get_contents($resolved->canonicalPath);
             if ($contents === false || preg_match('//u', $contents) !== 1) {

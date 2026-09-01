@@ -436,21 +436,61 @@ final class RuntimeOutcomeCursor
 
     public static function unsigned64(string $bytes): int
     {
-        /** @var array{value: int} $value */
-        $value = unpack('Pvalue', $bytes);
-        if ($value['value'] < 0) {
-            throw new RuntimeOutcomeInvalid('Runtime outcome integer exceeds the host transport range.');
-        }
-
-        return $value['value'];
+        return self::decodeUnsigned64($bytes);
     }
 
     public static function signed64(string $bytes): int
     {
-        /** @var array{value: int} $value */
-        $value = unpack('Pvalue', $bytes);
+        self::require64Bits($bytes);
+        if ((ord($bytes[7]) & 0x80) === 0) {
+            return self::decodeUnsigned64($bytes);
+        }
 
-        return $value['value'];
+        $minimum = str_repeat("\0", PHP_INT_SIZE - 1)
+            . "\x80"
+            . str_repeat("\xff", 8 - PHP_INT_SIZE);
+        if ($bytes === $minimum) {
+            return PHP_INT_MIN;
+        }
+
+        $magnitude = '';
+        $carry = 1;
+        for ($index = 0; $index < 8; ++$index) {
+            $byte = 255 - ord($bytes[$index]) + $carry;
+            if ($byte === 256) {
+                $byte = 0;
+                $carry = 1;
+            } else {
+                $carry = 0;
+            }
+            $magnitude .= chr($byte);
+        }
+
+        return -self::decodeUnsigned64($magnitude);
+    }
+
+    private static function decodeUnsigned64(string $bytes): int
+    {
+        self::require64Bits($bytes);
+        $value = 0;
+        for ($index = 7; $index >= 0; --$index) {
+            $byte = ord($bytes[$index]);
+            if ($value > intdiv(PHP_INT_MAX - $byte, 256)) {
+                throw new RuntimeOutcomeInvalid(
+                    'Runtime outcome integer exceeds the host transport range.',
+                );
+            }
+            $value = ($value * 256) + $byte;
+        }
+
+        return $value;
+    }
+
+    private static function require64Bits(string $bytes): void
+    {
+        if (strlen($bytes) !== 8) {
+            throw new RuntimeOutcomeInvalid('Runtime outcome integer is not 64 bits wide.');
+        }
     }
 
     public function text(int $length): string

@@ -151,6 +151,10 @@ final class RunCommand extends BatonCommand
     /** @param list<string> $arguments */
     private function runArtifact(string $artifact, array $arguments, string $projectRoot): int
     {
+        if (PHP_OS_FAMILY === 'Windows') {
+            return $this->runWindowsArtifact($artifact, $arguments, $projectRoot);
+        }
+
         $process = new Process(
             [$artifact, ...$arguments],
             $projectRoot,
@@ -179,5 +183,47 @@ final class RunCommand extends BatonCommand
                 ['baton build', 'baton run'],
             );
         }
+    }
+
+    /**
+     * Symfony's input pump cannot reliably make a Windows console stream
+     * nonblocking. Passing STDIN as Process input can therefore pause here
+     * until the user presses a key even when the program never reads stdin.
+     * Direct descriptor inheritance preserves interactive input without a
+     * parent-side read loop.
+     *
+     * @param list<string> $arguments
+     */
+    private function runWindowsArtifact(string $artifact, array $arguments, string $projectRoot): int
+    {
+        $descriptors = [
+            0 => ['file', 'php://stdin', 'r'],
+            1 => ['file', 'php://stdout', 'w'],
+            2 => ['file', 'php://stderr', 'w'],
+        ];
+        $pipes = [];
+        $process = @proc_open(
+            [$artifact, ...$arguments],
+            $descriptors,
+            $pipes,
+            $projectRoot,
+        );
+        if (!is_resource($process)) {
+            throw new BatonError(
+                'B0404',
+                'Built Program Could Not Be Started',
+                "Failed to run:\n    {$artifact}",
+                ['Rebuild the artifact, then run it again:'],
+                ['baton build', 'baton run'],
+            );
+        }
+
+        foreach ($pipes as $pipe) {
+            if (is_resource($pipe)) {
+                fclose($pipe);
+            }
+        }
+
+        return proc_close($process);
     }
 }
