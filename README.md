@@ -190,4 +190,5 @@ Baton's source-development workflow uses PHP 8.4 and Composer 2. These are contr
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+Apache License 2.0. See [LICENSE](LICENSE).
+Third-party components retain their own licenses and notices.
