@@ -50,6 +50,7 @@ if (is_file($pharPath) && !unlink($pharPath)) {
 
 $phar = new \Phar($pharPath, 0, 'baton.phar');
 $phar->startBuffering();
+$phar->addFile("{$repositoryRoot}/LICENSE", 'LICENSE');
 foreach (['src', 'templates', 'vendor'] as $directory) {
     addDirectory($phar, "{$stageDirectory}/{$directory}", $directory);
 }
